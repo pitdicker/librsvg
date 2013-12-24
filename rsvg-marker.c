@@ -92,7 +92,7 @@ rsvg_new_marker (void)
     marker->orientAuto = FALSE;
     marker->preserve_aspect_ratio = RSVG_ASPECT_RATIO_XMID_YMID;
     marker->refX = marker->refY = _rsvg_css_parse_length ("0");
-    marker->width = marker->height = _rsvg_css_parse_length ("1");
+    marker->width = marker->height = _rsvg_css_parse_length ("3");
     marker->bbox = TRUE;
     marker->vbox.active = FALSE;
     marker->super.set_atts = rsvg_node_marker_set_atts;
@@ -101,7 +101,7 @@ rsvg_new_marker (void)
 
 void
 rsvg_marker_render (RsvgMarker * self, gdouble x, gdouble y, gdouble orient, gdouble linewidth,
-		    RsvgDrawingCtx * ctx)
+                    RsvgDrawingCtx * ctx)
 {
     cairo_matrix_t affine, taffine;
     unsigned int i;
@@ -125,29 +125,20 @@ rsvg_marker_render (RsvgMarker * self, gdouble x, gdouble y, gdouble orient, gdo
     }
 
     if (self->vbox.active) {
-
-        double w, h, x, y;
+        double w, h;
         w = _rsvg_css_normalize_length (&self->width, ctx, 'h');
         h = _rsvg_css_normalize_length (&self->height, ctx, 'v');
-        x = 0;
-        y = 0;
 
         rsvg_preserve_aspect_ratio (self->preserve_aspect_ratio,
                                     self->vbox.rect.width,
                                     self->vbox.rect.height,
                                     &w, &h, &x, &y);
 
-        x = -self->vbox.rect.x * w / self->vbox.rect.width;
-        y = -self->vbox.rect.y * h / self->vbox.rect.height;
-
-        cairo_matrix_init (&taffine,
-                           w / self->vbox.rect.width,
-                           0,
-                           0,
-                           h / self->vbox.rect.height,
-                           x,
-                           y);
+        cairo_matrix_init_scale (&taffine,
+                                 w / self->vbox.rect.width,
+                                 h / self->vbox.rect.height);
         cairo_matrix_multiply (&affine, &taffine, &affine);
+
         _rsvg_push_view_box (ctx, self->vbox.rect.width, self->vbox.rect.height);
     }
 
