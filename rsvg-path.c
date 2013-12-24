@@ -611,13 +611,11 @@ rsvg_parse_path_data (RSVGParsePathCtx * ctx, const char *data)
                 sign = 1;
             }
         } else if (c == '.') {
-            if (!in_num) {
-                in_frac = TRUE;
-                val = 0;
-            }
-            else if (in_frac) {
-                rsvg_path_end_of_number(ctx, val, sign, exp_sign, exp);
-                in_frac = FALSE;
+            if (in_frac || !in_num) {
+                if (in_frac) {
+                    rsvg_path_end_of_number(ctx, val, sign, exp_sign, exp);
+                }
+                in_num = TRUE;
                 in_exp = FALSE;
                 exp = 0;
                 exp_sign = 1;
@@ -625,10 +623,7 @@ rsvg_parse_path_data (RSVGParsePathCtx * ctx, const char *data)
                 val = 0;
                 sign = 1;
             }
-            else {
-                in_frac = TRUE;
-            }
-            in_num = TRUE;
+            in_frac = TRUE;
             frac = 1;
         } else if ((c == 'E' || c == 'e') && in_num) {
             in_exp = TRUE;
@@ -641,6 +636,8 @@ rsvg_parse_path_data (RSVGParsePathCtx * ctx, const char *data)
             /* end of number */
             rsvg_path_end_of_number(ctx, val, sign, exp_sign, exp);
             in_num = FALSE;
+            in_frac = FALSE;
+            in_exp = FALSE;
         }
 
         if (c == '\0')
