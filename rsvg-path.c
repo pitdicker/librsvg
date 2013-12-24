@@ -332,7 +332,7 @@ rsvg_path_arc (RSVGParsePathCtx * ctx,
 
     for (i = 0; i < n_segs; i++)
         rsvg_path_arc_segment (ctx, cx, cy,
-			                   theta1 + i * delta_theta / n_segs,
+                               theta1 + i * delta_theta / n_segs,
                                theta1 + (i + 1) * delta_theta / n_segs,
                                rx, ry, x_axis_rotation);
 
@@ -379,7 +379,7 @@ rsvg_parse_path_do_cmd (RSVGParsePathCtx * ctx, gboolean final)
             ctx->cp.point.x = ctx->rp.point.x = ctx->params[0];
             ctx->cp.point.y = ctx->rp.point.y = ctx->params[1];
             ctx->param = 0;
-	    ctx->cmd = 'l'; /* implicit linetos after a moveto */
+            ctx->cmd = 'l'; /* implicit linetos after a moveto */
         }
         break;
     case 'l':
@@ -433,6 +433,7 @@ rsvg_parse_path_do_cmd (RSVGParsePathCtx * ctx, gboolean final)
         if (ctx->param == 1) {
             rsvg_path_builder_line_to (&ctx->builder, ctx->params[0], ctx->cp.point.y);
             ctx->cp.point.x = ctx->rp.point.x = ctx->params[0];
+            ctx->rp.point.y = ctx->cp.point.y;
             ctx->param = 0;
         }
         break;
@@ -441,6 +442,7 @@ rsvg_parse_path_do_cmd (RSVGParsePathCtx * ctx, gboolean final)
         if (ctx->param == 1) {
             rsvg_path_builder_line_to (&ctx->builder, ctx->cp.point.x, ctx->params[0]);
             ctx->cp.point.y = ctx->rp.point.y = ctx->params[0];
+            ctx->rp.point.x = ctx->cp.point.x;
             ctx->param = 0;
         }
         break;
@@ -516,6 +518,8 @@ rsvg_parse_path_do_cmd (RSVGParsePathCtx * ctx, gboolean final)
             rsvg_path_arc (ctx,
                            ctx->params[0], ctx->params[1], ctx->params[2],
                            ctx->params[3], ctx->params[4], ctx->params[5], ctx->params[6]);
+            ctx->rp.point.x = ctx->params[5];
+            ctx->rp.point.y = ctx->params[6];
             ctx->param = 0;
         }
         break;
