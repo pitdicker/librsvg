@@ -1,26 +1,26 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* vim: set sw=4 sts=4 ts=4 expandtab: */
-/* 
+/*
    rsvg-path.c: Parse SVG path element data into bezier path.
- 
+
    Copyright (C) 2000 Eazel, Inc.
    Copyright © 2011 Christian Persch
-  
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
    published by the Free Software Foundation; either version 2 of the
    License, or (at your option) any later version.
-  
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Library General Public License for more details.
-  
+
    You should have received a copy of the GNU Library General Public
    License along with this program; if not, write to the
    Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.
-  
+
    Author: Raph Levien <raph@artofcode.com>
            F. Wang <fred.wang@free.fr> - fix drawing of arc
 */
@@ -69,15 +69,15 @@ static inline void
 rsvg_path_builder_add_element (RsvgPathBuilder *builder,
                                cairo_path_data_t *data)
 {
-  g_array_append_val (builder->path_data, *data);
+    g_array_append_val (builder->path_data, *data);
 }
 
 void
 rsvg_path_builder_init (RsvgPathBuilder *builder,
                         int n_elements)
 {
-  builder->path_data = g_array_sized_new (FALSE, FALSE, sizeof (cairo_path_data_t), n_elements);
-  builder->last_move_to_index = -1;
+    builder->path_data = g_array_sized_new (FALSE, FALSE, sizeof (cairo_path_data_t), n_elements);
+    builder->last_move_to_index = -1;
 }
 
 void
@@ -85,18 +85,18 @@ rsvg_path_builder_move_to (RsvgPathBuilder *builder,
                            double x,
                            double y)
 {
-  cairo_path_data_t data;
+    cairo_path_data_t data;
 
-  rsvg_path_builder_ensure_capacity (builder, 2);
+    rsvg_path_builder_ensure_capacity (builder, 2);
 
-  data.header.type = CAIRO_PATH_MOVE_TO;
-  data.header.length = 2;
-  rsvg_path_builder_add_element (builder, &data);
-  builder->last_move_to_index = builder->path_data->len - 1;
+    data.header.type = CAIRO_PATH_MOVE_TO;
+    data.header.length = 2;
+    rsvg_path_builder_add_element (builder, &data);
+    builder->last_move_to_index = builder->path_data->len - 1;
 
-  data.point.x = x;
-  data.point.y = y;
-  rsvg_path_builder_add_element (builder, &data);
+    data.point.x = x;
+    data.point.y = y;
+    rsvg_path_builder_add_element (builder, &data);
 }
 
 void
@@ -104,16 +104,16 @@ rsvg_path_builder_line_to (RsvgPathBuilder *builder,
                            double x,
                            double y)
 {
-  cairo_path_data_t data;
+    cairo_path_data_t data;
 
-  rsvg_path_builder_ensure_capacity (builder, 2);
+    rsvg_path_builder_ensure_capacity (builder, 2);
 
-  data.header.type = CAIRO_PATH_LINE_TO;
-  data.header.length = 2;
-  rsvg_path_builder_add_element (builder, &data);
-  data.point.x = x;
-  data.point.y = y;
-  rsvg_path_builder_add_element (builder, &data);
+    data.header.type = CAIRO_PATH_LINE_TO;
+    data.header.length = 2;
+    rsvg_path_builder_add_element (builder, &data);
+    data.point.x = x;
+    data.point.y = y;
+    rsvg_path_builder_add_element (builder, &data);
 }
 
 void
@@ -125,41 +125,41 @@ rsvg_path_builder_curve_to (RsvgPathBuilder *builder,
                             double x3,
                             double y3)
 {
-  cairo_path_data_t data;
+    cairo_path_data_t data;
 
-  rsvg_path_builder_ensure_capacity (builder, 4);
+    rsvg_path_builder_ensure_capacity (builder, 4);
 
-  data.header.type = CAIRO_PATH_CURVE_TO;
-  data.header.length = 4;
-  rsvg_path_builder_add_element (builder, &data);
-  data.point.x = x1;
-  data.point.y = y1;
-  rsvg_path_builder_add_element (builder, &data);
-  data.point.x = x2;
-  data.point.y = y2;
-  rsvg_path_builder_add_element (builder, &data);
-  data.point.x = x3;
-  data.point.y = y3;
-  rsvg_path_builder_add_element (builder, &data);
+    data.header.type = CAIRO_PATH_CURVE_TO;
+    data.header.length = 4;
+    rsvg_path_builder_add_element (builder, &data);
+    data.point.x = x1;
+    data.point.y = y1;
+    rsvg_path_builder_add_element (builder, &data);
+    data.point.x = x2;
+    data.point.y = y2;
+    rsvg_path_builder_add_element (builder, &data);
+    data.point.x = x3;
+    data.point.y = y3;
+    rsvg_path_builder_add_element (builder, &data);
 }
 
 void
 rsvg_path_builder_close_path (RsvgPathBuilder *builder)
 {
-  cairo_path_data_t data;
+    cairo_path_data_t data;
 
-  rsvg_path_builder_ensure_capacity (builder, 1);
+    rsvg_path_builder_ensure_capacity (builder, 1);
 
-  data.header.type = CAIRO_PATH_CLOSE_PATH;
-  data.header.length = 1;
-  rsvg_path_builder_add_element (builder, &data);
+    data.header.type = CAIRO_PATH_CLOSE_PATH;
+    data.header.length = 1;
+    rsvg_path_builder_add_element (builder, &data);
 
-  /* Add a 'move-to' element */
-  if (builder->last_move_to_index >= 0) {
-    cairo_path_data_t *moveto = &g_array_index (builder->path_data, cairo_path_data_t, builder->last_move_to_index);
+    /* Add a 'move-to' element */
+    if (builder->last_move_to_index >= 0) {
+        cairo_path_data_t *moveto = &g_array_index (builder->path_data, cairo_path_data_t, builder->last_move_to_index);
 
-    rsvg_path_builder_move_to (builder, moveto[1].point.x, moveto[1].point.y);
-  }
+        rsvg_path_builder_move_to (builder, moveto[1].point.x, moveto[1].point.y);
+    }
 }
 
 cairo_path_t *
@@ -188,25 +188,25 @@ rsvg_path_arc_segment (RSVGParsePathCtx * ctx,
     double f, sinf, cosf;
 
     f = x_axis_rotation * M_PI / 180.0;
-    sinf = sin(f);
-    cosf = cos(f);
+    sinf = sin (f);
+    cosf = cos (f);
 
     th_half = 0.5 * (th1 - th0);
     t = (8.0 / 3.0) * sin (th_half * 0.5) * sin (th_half * 0.5) / sin (th_half);
-    x1 = rx*(cos (th0) - t * sin (th0));
-    y1 = ry*(sin (th0) + t * cos (th0));
-    x3 = rx*cos (th1);
-    y3 = ry*sin (th1);
-    x2 = x3 + rx*(t * sin (th1));
-    y2 = y3 + ry*(-t * cos (th1));
+    x1 = rx * (cos (th0) - t * sin (th0));
+    y1 = ry * (sin (th0) + t * cos (th0));
+    x3 = rx * cos (th1);
+    y3 = ry * sin (th1);
+    x2 = x3 + rx * (t * sin (th1));
+    y2 = y3 + ry * (-t * cos (th1));
 
     rsvg_path_builder_curve_to (&ctx->builder,
-                            xc + cosf*x1 - sinf*y1,
-                            yc + sinf*x1 + cosf*y1,
-                            xc + cosf*x2 - sinf*y2,
-                            yc + sinf*x2 + cosf*y2,
-                            xc + cosf*x3 - sinf*y3,
-                            yc + sinf*x3 + cosf*y3);
+                                xc + cosf * x1 - sinf * y1,
+                                yc + sinf * x1 + cosf * y1,
+                                xc + cosf * x2 - sinf * y2,
+                                yc + sinf * x2 + cosf * y2,
+                                xc + cosf * x3 - sinf * y3,
+                                yc + sinf * x3 + cosf * y3);
 }
 
 /**
@@ -248,13 +248,13 @@ rsvg_path_arc (RSVGParsePathCtx * ctx,
     x2 = x;
     y2 = y;
 
-    if(x1 == x2 && y1 == y2)
+    if (x1 == x2 && y1 == y2)
         return;
 
     /* X-axis */
     f = x_axis_rotation * M_PI / 180.0;
-    sinf = sin(f);
-    cosf = cos(f);
+    sinf = sin (f);
+    cosf = cos (f);
 
     /* Check the radius against floading point underflow.
        See http://bugs.debian.org/508443 */
@@ -263,69 +263,79 @@ rsvg_path_arc (RSVGParsePathCtx * ctx,
         return;
     }
 
-    if(rx < 0)rx = -rx;
-    if(ry < 0)ry = -ry;
+    if (rx < 0)
+        rx = -rx;
+    if (ry < 0)
+        ry = -ry;
 
-    k1 = (x1 - x2)/2;
-    k2 = (y1 - y2)/2;
+    k1 = (x1 - x2) / 2;
+    k2 = (y1 - y2) / 2;
 
     x1_ = cosf * k1 + sinf * k2;
     y1_ = -sinf * k1 + cosf * k2;
 
-    gamma = (x1_*x1_)/(rx*rx) + (y1_*y1_)/(ry*ry);
+    gamma = (x1_ * x1_) / (rx * rx) + (y1_ * y1_) / (ry * ry);
     if (gamma > 1) {
-        rx *= sqrt(gamma);
-        ry *= sqrt(gamma);
+        rx *= sqrt (gamma);
+        ry *= sqrt (gamma);
     }
 
     /* Compute the center */
 
-    k1 = rx*rx*y1_*y1_ + ry*ry*x1_*x1_;
-    if(k1 == 0)    
+    k1 = rx * rx * y1_ * y1_ + ry * ry * x1_ * x1_;
+    if (k1 == 0)
         return;
 
-    k1 = sqrt(fabs((rx*rx*ry*ry)/k1 - 1));
-    if(sweep_flag == large_arc_flag)
+    k1 = sqrt (fabs ((rx * rx * ry * ry) / k1 - 1));
+    if (sweep_flag == large_arc_flag)
         k1 = -k1;
 
-    cx_ = k1*rx*y1_/ry;
-    cy_ = -k1*ry*x1_/rx;
-    
-    cx = cosf*cx_ - sinf*cy_ + (x1+x2)/2;
-    cy = sinf*cx_ + cosf*cy_ + (y1+y2)/2;
+    cx_ = k1 * rx * y1_ / ry;
+    cy_ = -k1 * ry * x1_ / rx;
+
+    cx = cosf * cx_ - sinf * cy_ + (x1 + x2) / 2;
+    cy = sinf * cx_ + cosf * cy_ + (y1 + y2) / 2;
 
     /* Compute start angle */
 
-    k1 = (x1_ - cx_)/rx;
-    k2 = (y1_ - cy_)/ry;
-    k3 = (-x1_ - cx_)/rx;
-    k4 = (-y1_ - cy_)/ry;
+    k1 = (x1_ - cx_) / rx;
+    k2 = (y1_ - cy_) / ry;
+    k3 = (-x1_ - cx_) / rx;
+    k4 = (-y1_ - cy_) / ry;
 
-    k5 = sqrt(fabs(k1*k1 + k2*k2));
-    if(k5 == 0)return;
+    k5 = sqrt (fabs (k1 * k1 + k2 * k2));
+    if (k5 == 0)
+        return;
 
-    k5 = k1/k5;
-    if(k5 < -1)k5 = -1;
-    else if(k5 > 1)k5 = 1;
-    theta1 = acos(k5);
-    if(k2 < 0)theta1 = -theta1;
+    k5 = k1 / k5;
+    if (k5 < -1)
+        k5 = -1;
+    else if (k5 > 1)
+        k5 = 1;
+    theta1 = acos (k5);
+    if (k2 < 0)
+        theta1 = -theta1;
 
     /* Compute delta_theta */
 
-    k5 = sqrt(fabs((k1*k1 + k2*k2)*(k3*k3 + k4*k4)));
-    if(k5 == 0)return;
+    k5 = sqrt (fabs ((k1 * k1 + k2 * k2) * (k3 * k3 + k4 * k4)));
+    if (k5 == 0)
+        return;
 
-    k5 = (k1*k3 + k2*k4)/k5;
-    if(k5 < -1)k5 = -1;
-    else if(k5 > 1)k5 = 1;
-    delta_theta = acos(k5);
-    if(k1*k4 - k3*k2 < 0)delta_theta = -delta_theta;
+    k5 = (k1 * k3 + k2 * k4) / k5;
+    if (k5 < -1)
+        k5 = -1;
+    else if (k5 > 1)
+        k5 = 1;
+    delta_theta = acos (k5);
+    if (k1 * k4 - k3 * k2 < 0)
+        delta_theta = -delta_theta;
 
-    if(sweep_flag && delta_theta < 0)
+    if (sweep_flag && delta_theta < 0)
         delta_theta += M_PI*2;
-    else if(!sweep_flag && delta_theta > 0)
+    else if (!sweep_flag && delta_theta > 0)
         delta_theta -= M_PI*2;
-   
+
     /* Now draw the arc */
 
     n_segs = ceil (fabs (delta_theta / (M_PI * 0.5 + 0.001)));
@@ -569,7 +579,7 @@ rsvg_path_end_of_number (RSVGParsePathCtx * ctx, double val, int sign, int exp_s
         }
     }
     ctx->params[ctx->param++] = val;
-    rsvg_parse_path_do_cmd (ctx, FALSE);    
+    rsvg_parse_path_do_cmd (ctx, FALSE);
 }
 
 static void
