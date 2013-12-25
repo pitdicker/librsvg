@@ -4,6 +4,7 @@
    rsvg-marker.c: Marker loading and rendering
 
    Copyright (C) 2004, 2005 Caleb Moore <c.moore@student.unsw.edu.au>
+   Copyright (C) 2013 Paul Dicker <pitdicker@gmail.com>
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
@@ -206,16 +207,19 @@ rsvg_render_markers (RsvgDrawingCtx * ctx,
                      const cairo_path_t *path)
 {
     double x, y;
-    double lastx, lasty;
     double linewidth;
-    cairo_path_data_type_t code, nextcode;
+    cairo_path_data_type_t intype, outtype;
+    double xdifin, ydifin, xdifout, ydifout, xdifstart, ydifstart, tot;
+    int in, out, num_data;
+    gboolean closed;
+    int renderstart, rendermiddle;
 
     RsvgState *state;
     RsvgMarker *startmarker;
     RsvgMarker *middlemarker;
     RsvgMarker *endmarker;
-    cairo_path_data_t *data, *nextdata, *end;
-    cairo_path_data_t nextp;
+    cairo_path_data_t *data;
+    cairo_path_data_t prevp, nextp;
 
     state = rsvg_current_state (ctx);
 
@@ -224,105 +228,166 @@ rsvg_render_markers (RsvgDrawingCtx * ctx,
     middlemarker = (RsvgMarker *) state->middleMarker;
     endmarker = (RsvgMarker *) state->endMarker;
 
+    /* this function makes the assumptions about the path data:
+       - the first element is always a MOVE_TO
+       - every CLOSE_TO is followed by a MOVE_TO, containing the start point of
+         the current subpath */
+
     if (linewidth == 0)
         return;
 
     if (!startmarker && !middlemarker && !endmarker)
         return;
 
-    x = 0;
-    y = 0;
-
-    if (path->num_data <= 0)
+    if (path->num_data <= 2) /* the path only contains a MOVE_TO */
         return;
 
-    end = &path->data[path->num_data];
     data = &path->data[0];
-    nextcode = data[0].header.type;
-    if (data[0].header.length > 1)
-        nextp = data[data[0].header.length - 1];
-    else
-        nextp.point.x = nextp.point.y = 0.;
+    num_data = path->num_data;
 
-    for ( ; data < end; data = nextdata) {
-        lastx = x;
-        lasty = y;
-        x = nextp.point.x;
-        y = nextp.point.y;
-        code = nextcode;
+    renderstart = 1;
+    rendermiddle = 0;
+    closed = FALSE;
+    prevp = data[1];
+    xdifin = ydifin = 0;
 
-        nextdata = data + data->header.length;
-        if (nextdata < end) {
-            nextcode = nextdata->header.type;
-            if (nextdata->header.length > 1) {
-                nextp = nextdata[nextdata->header.length - 1];
+    for (in = 0; in < num_data; in += data[in].header.length) {
+        intype = data[in].header.type;
+        if (intype == CAIRO_PATH_CLOSE_PATH)
+            in++; /* get position from next MOVE_TO */
+        x = data[in + data[in].header.length - 1].point.x;
+        y = data[in + data[in].header.length - 1].point.y;
+
+        rendermiddle++;
+
+        /* if this is a new subpath: determine if this subpath is closed */
+        if (intype == CAIRO_PATH_MOVE_TO) {
+            closed = FALSE;
+            for (out = in + data[in].header.length; out < num_data; out += data[out].header.length) {
+                 if (closed) {
+                    /* a path only really counts as closed if CLOSE_PATH is
+                     * directly followed by a MOVE_TO or nothing */
+                    if (data[out].header.type != CAIRO_PATH_MOVE_TO)
+                        closed = FALSE;
+                } else {
+                    if (data[out].header.type == CAIRO_PATH_CLOSE_PATH) {
+                        closed = TRUE;
+                        out++; /* prepare to skip next MOVE_TO */
+                    } else if (data[out].header.type == CAIRO_PATH_MOVE_TO) {
+                        break;
+                    }
+                }
+            }
+            if (closed) {
+                /* render one marker less, because this will be done at the end
+                 * of the CLOSE_PATH segment */
+                rendermiddle--;
+                /* direction will be set once the outgoing direction is known */
+                xdifstart = ydifstart = 0;
+            }
+        }
+
+        out = in + data[in].header.length;
+        if (out < num_data) {
+            /* determine position of next vertex */
+            outtype = data[out].header.type;
+            if (outtype == CAIRO_PATH_CLOSE_PATH)
+                out++;/* get position from next MOVE_TO */
+            nextp = data[out + data[out].header.length - 1];
+
+            /* determine outgoing angle */
+            if (intype == CAIRO_PATH_CLOSE_PATH && outtype == CAIRO_PATH_MOVE_TO) {
+                xdifout = xdifstart;
+                ydifout = ydifstart;
+            } else if (outtype == CAIRO_PATH_CURVE_TO &&
+                (x != data[out + 1].point.x || y != data[out + 1].point.y)) {
+                xdifout = data[out + 1].point.x - x;
+                ydifout = data[out + 1].point.y - y;
+            } else if (outtype == CAIRO_PATH_CURVE_TO &&
+                (x != data[out + 2].point.x || y != data[out + 2].point.y)) {
+                xdifout = data[out + 2].point.x - x;
+                ydifout = data[out + 2].point.y - y;
+            } else if (x != nextp.point.x || y != nextp.point.y) {
+                xdifout = nextp.point.x - x;
+                ydifout = nextp.point.y - y;
             } else {
-                /* keep nextp unchanged */
+                continue;
             }
         } else {
-            nextcode = CAIRO_PATH_MOVE_TO;
+            /* the end of the path is reached */
+            if (intype == CAIRO_PATH_CLOSE_PATH) {
+                xdifout = xdifstart;
+                ydifout = ydifstart;
+            } else {
+                xdifout = xdifin;
+                ydifout = ydifin;
+                rendermiddle--;
+            }
         }
 
-        if (nextcode == CAIRO_PATH_MOVE_TO ||
-            code == CAIRO_PATH_CLOSE_PATH) {
-            if (endmarker) {
-                if (code == CAIRO_PATH_CURVE_TO) {
-                    rsvg_marker_render (endmarker, x, y,
-                                        atan2 (y - data[2].point.y,
-                                               x - data[2].point.x),
-                                        linewidth, ctx);
-                } else {
-                    rsvg_marker_render (endmarker, x, y,
-                                        atan2 (y - lasty, x - lastx),
-                                        linewidth, ctx);
-                }
-            }
-        } else if (code == CAIRO_PATH_MOVE_TO ||
-                   code == CAIRO_PATH_CLOSE_PATH) {
-            if (startmarker) {
-                if (nextcode == CAIRO_PATH_CURVE_TO) {
-                    rsvg_marker_render (startmarker, x, y,
-                                        atan2 (nextdata[1].point.y - y,
-                                               nextdata[1].point.x - x),
-                                        linewidth,
-                                        ctx);
-                } else {
-                    rsvg_marker_render (startmarker, x, y,
-                                        atan2 (nextp.point.y - y, nextp.point.x - x),
-                                        linewidth,
-                                        ctx);
-                }
-            }
+        /* if from a closed subpath this is the first segment that has a direction,
+         * remember this direction as the direction of the start of this subpath */
+        if (closed && (xdifstart == 0 && ydifstart == 0) &&
+            (xdifout != 0 || ydifout != 0)) {
+            xdifstart = xdifout;
+            ydifstart = ydifout;
+        }
+
+        /* determine incoming angle */
+        if (intype == CAIRO_PATH_CURVE_TO &&
+            (x != data[in + 2].point.x || y != data[in + 2].point.y)) {
+            xdifin = x - data[in + 2].point.x;
+            ydifin = y - data[in + 2].point.y;
+        } else if (intype == CAIRO_PATH_CURVE_TO &&
+                   (x != data[in + 1].point.x || y != data[in + 1].point.y)) {
+            xdifin = x - data[in + 1].point.x;
+            ydifin = y - data[in + 1].point.y;
+        } else if (x != prevp.point.x || y != prevp.point.y) {
+            xdifin = x - prevp.point.x;
+            ydifin = y - prevp.point.y;
+        } else if ((xdifin == 0 && ydifin == 0) &&
+                   (xdifout != 0 || ydifout != 0)) {
+            /* there has not yet been a segment with an incoming direction,
+               but an outgoing direction is known */
+            xdifin = xdifout;
+            ydifin = ydifout;
         } else {
-            if (middlemarker) {
-                double xdifin, ydifin, xdifout, ydifout, intot, outtot, angle;
-
-                if (code == CAIRO_PATH_CURVE_TO) {
-                    xdifin = x - data[2].point.x;
-                    ydifin = y - data[2].point.y;
-                } else {
-                    xdifin = x - lastx;
-                    ydifin = y - lasty;
-                }
-                if (nextcode == CAIRO_PATH_CURVE_TO) {
-                    xdifout = nextdata[1].point.x - x;
-                    ydifout = nextdata[1].point.y - y;
-                } else {
-                    xdifout = nextp.point.x - x;
-                    ydifout = nextp.point.y - y;
-                }
-
-                intot = sqrt (xdifin * xdifin + ydifin * ydifin);
-                outtot = sqrt (xdifout * xdifout + ydifout * ydifout);
-
-                xdifin /= intot;
-                ydifin /= intot;
-                xdifout /= outtot;
-                ydifout /= outtot;
-
-                angle = atan2 ((ydifin + ydifout) / 2, (xdifin + xdifout) / 2);
-                rsvg_marker_render (middlemarker, x, y, angle, linewidth, ctx);
-            }
+            /* just keep the last known incoming angle */
         }
+
+        /* the actual rendering */
+        if (renderstart == 1) {
+            if (startmarker && (closed == FALSE || !middlemarker)) {
+                rsvg_marker_render (startmarker, x, y,
+                                    atan2 (ydifout, xdifout),
+                                    linewidth, ctx);
+            }
+            renderstart = 0;
+            rendermiddle--;
+        }
+
+        if (middlemarker && rendermiddle >= 1) {
+            tot = sqrt (xdifin * xdifin + ydifin * ydifin);
+            xdifin /= tot;
+            ydifin /= tot;
+            tot = sqrt (xdifout * xdifout + ydifout * ydifout);
+            xdifout /= tot;
+            ydifout /= tot;
+            for (; rendermiddle > 0; rendermiddle--) {
+                rsvg_marker_render (middlemarker, x, y,
+                                    atan2 (ydifin + ydifout, xdifin + xdifout),
+                                    linewidth, ctx);
+             }
+        }
+        rendermiddle = 0;
+
+        prevp.point.x = x;
+        prevp.point.y = y;
+    }
+
+    if (endmarker && (closed == FALSE || !middlemarker)) {
+        rsvg_marker_render (endmarker, x, y,
+                            atan2 (ydifin, xdifin),
+                            linewidth, ctx);
     }
 }
