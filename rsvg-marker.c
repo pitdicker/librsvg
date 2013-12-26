@@ -368,11 +368,15 @@ rsvg_render_markers (RsvgDrawingCtx * ctx,
 
         if (middlemarker && rendermiddle >= 1) {
             tot = sqrt (xdifin * xdifin + ydifin * ydifin);
-            xdifin /= tot;
-            ydifin /= tot;
+            if (tot) {
+                xdifin /= tot;
+                ydifin /= tot;
+            }
             tot = sqrt (xdifout * xdifout + ydifout * ydifout);
-            xdifout /= tot;
-            ydifout /= tot;
+            if (tot) {
+                xdifout /= tot;
+                ydifout /= tot;
+            }
             for (; rendermiddle > 0; rendermiddle--) {
                 rsvg_marker_render (middlemarker, x, y,
                                     atan2 (ydifin + ydifout, xdifin + xdifout),
