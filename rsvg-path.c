@@ -546,23 +546,28 @@ rsvg_parse_path (const char *path_str)
         switch (*path_str) {
         case '.':
             /* '.' must be followed by a number */
-            if ((end[1] >= 0 && end[1] <= '9'))
+            if (!(path_str[1] >= 0 && path_str[1] <= '9'))
                 goto exitloop;
         case '+': case '-':
-            /* '+' of '-' must be followed by a number, or
-               a '.' that is followed by a number */
-            if (!((end[1] >= 0 && end[1] <= '9') ||
-                  end[1] == '.' && !(end[2] >= 0 && end[2] <= '9')))
+            /* '+' or '-' must be followed by a number,
+               or by a '.' that is followed by a number */
+            if (!((path_str[1] >= 0 && path_str[1] <= '9') ||
+                  path_str[1] == '.' && !(path_str[2] >= 0 && path_str[2] <= '9')))
                 goto exitloop;
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
-            val = g_ascii_strtod(path_str, (gchar **) &valend);
-            if (!isfinite (val))
-                goto exitloop;
-
-            ctx.params[ctx.param] = rsvg_path_coord_to_abs (&ctx, val);
+            if (ctx.cmd == 'A' && (ctx.param == 3 || ctx.param == 4)) {
+                if (*path_str != '0' && *path_str != '1')
+                    goto exitloop;
+                ctx.params[ctx.param] = *path_str - '0';
+            } else {
+                val = g_ascii_strtod(path_str, (gchar **) &valend);
+                path_str = valend - 1;
+                if (!isfinite (val))
+                    goto exitloop;
+                ctx.params[ctx.param] = rsvg_path_coord_to_abs (&ctx, val);
+            }
             ctx.param++;
-            path_str = valend - 1;
             
             switch (ctx.cmd) {
             case 'M':
