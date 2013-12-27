@@ -35,11 +35,6 @@ G_BEGIN_DECLS
 typedef struct {
     GArray *path_data;
     int last_move_to_index;
-    enum {
-        RSVG_PATH_DATA_BEGIN,
-        RSVG_PATH_DATA_VALID,
-        RSVG_PATH_DATA_INVALID
-    } valid_data;
 } RsvgPathBuilder;
 
 G_GNUC_INTERNAL
