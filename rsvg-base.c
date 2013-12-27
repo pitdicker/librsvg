@@ -274,10 +274,10 @@ rsvg_standard_element_start (RsvgHandle * ctx, const char *name, RsvgPropertyBag
     else if (!strcmp (name, "tref"))
         newnode = rsvg_new_tref ();
     else {
-		/* hack for bug 401115. whenever we encounter a node we don't understand, push it into a group. 
-		   this will allow us to handle things like conditionals properly. */
-		newnode = rsvg_new_group ();
-	}
+        /* hack for bug 401115. whenever we encounter a node we don't understand, push it into a group.
+           this will allow us to handle things like conditionals properly. */
+        newnode = rsvg_new_group ();
+    }
 
     if (newnode) {
         g_assert (RSVG_NODE_TYPE (newnode) != RSVG_NODE_TYPE_INVALID);
@@ -466,9 +466,9 @@ typedef struct _RsvgSaxHandlerXinclude {
 } RsvgSaxHandlerXinclude;
 
 static void
- rsvg_start_xinclude (RsvgHandle * ctx, RsvgPropertyBag * atts);
+rsvg_start_xinclude (RsvgHandle * ctx, RsvgPropertyBag * atts);
 static void
- rsvg_characters_impl (RsvgHandle * ctx, const xmlChar * ch, int len);
+rsvg_characters_impl (RsvgHandle * ctx, const xmlChar * ch, int len);
 
 static void
 rsvg_xinclude_handler_free (RsvgSaxHandler * self)
@@ -899,7 +899,7 @@ rsvg_processing_instruction (void *ctx, const xmlChar * target, const xmlChar * 
                                                                 &mime_type,
                                                                 &style_data_len,
                                                                 NULL);
-                        if (style_data && 
+                        if (style_data &&
                             mime_type &&
                             strcmp (mime_type, "text/css") == 0) {
                             rsvg_parse_cssbuffer (handle, (char *) style_data, style_data_len);
@@ -957,7 +957,7 @@ rsvg_path_is_uri (char const *path)
     }
 
     for (p = &path[1];
-	    (*p >= 'a' && *p <= 'z') ||
+        (*p >= 'a' && *p <= 'z') ||
         (*p >= 'A' && *p <= 'Z') ||
         (*p >= '0' && *p <= '9') ||
          *p == '+' ||
@@ -1010,9 +1010,9 @@ rsvg_handle_set_base_uri (RsvgHandle * handle, const char *base_uri)
     g_return_if_fail (handle != NULL);
 
     if (base_uri == NULL)
-	return;
+        return;
 
-    if (rsvg_path_is_uri (base_uri)) 
+    if (rsvg_path_is_uri (base_uri))
         uri = g_strdup (base_uri);
     else
         uri = rsvg_get_base_uri_from_filename (base_uri);
@@ -1144,7 +1144,7 @@ rsvg_handle_close_impl (RsvgHandle * handle, GError ** error)
 {
     GError *real_error = NULL;
 
-	handle->priv->is_closed = TRUE;
+    handle->priv->is_closed = TRUE;
 
     handle->priv->error = &real_error;
 
@@ -1185,11 +1185,11 @@ rsvg_drawing_ctx_free (RsvgDrawingCtx * handle)
 
     rsvg_state_free_all (handle->state);
 
-	/* the drawsub stack's nodes are owned by the ->defs */
-	g_slist_free (handle->drawsub_stack);
+    /* the drawsub stack's nodes are owned by the ->defs */
+    g_slist_free (handle->drawsub_stack);
 
     g_slist_free (handle->ptrs);
-	
+
     if (handle->base_uri)
         g_free (handle->base_uri);
 
@@ -1301,8 +1301,8 @@ rsvg_handle_get_dimensions (RsvgHandle * handle, RsvgDimensionData * dimension_d
  * rsvg_handle_get_dimensions_sub:
  * @handle: A #RsvgHandle
  * @dimension_data: (out): A place to store the SVG's size
- * @id: An element's id within the SVG, or NULL to get the dimension of the whole SVG. 
- * For example, if you have a layer called "layer1" for that you want to get the dimension, 
+ * @id: An element's id within the SVG, or NULL to get the dimension of the whole SVG.
+ * For example, if you have a layer called "layer1" for that you want to get the dimension,
  * pass "#layer1" as the id.
  *
  * Get the size of a subelement of the SVG file. Do not call from within the size_func callback, because an infinite loop will occur.
@@ -1395,7 +1395,7 @@ rsvg_handle_get_dimensions_sub (RsvgHandle * handle, RsvgDimensionData * dimensi
                                          bbox.rect.height + bbox.rect.y * 2,
                                          12) + 0.5);
     }
-    
+
     dimension_data->em = dimension_data->width;
     dimension_data->ex = dimension_data->height;
 
@@ -1422,14 +1422,14 @@ rsvg_handle_get_dimensions_sub (RsvgHandle * handle, RsvgDimensionData * dimensi
 gboolean
 rsvg_handle_get_position_sub (RsvgHandle * handle, RsvgPositionData * position_data, const char *id)
 {
-    RsvgDrawingCtx		*draw;
-    RsvgNodeSvg			*root;
-    RsvgNode			*node;
-    RsvgBbox			 bbox;
+    RsvgDrawingCtx      *draw;
+    RsvgNodeSvg         *root;
+    RsvgNode            *node;
+    RsvgBbox             bbox;
     RsvgDimensionData    dimension_data;
-    cairo_surface_t		*target = NULL;
-    cairo_t				*cr = NULL;
-    gboolean			 ret = FALSE;
+    cairo_surface_t     *target = NULL;
+    cairo_t             *cr = NULL;
+    gboolean             ret = FALSE;
 
     g_return_val_if_fail (handle, FALSE);
     g_return_val_if_fail (position_data, FALSE);
@@ -1502,7 +1502,7 @@ bail:
     return ret;
 }
 
-/** 
+/**
  * rsvg_handle_has_sub:
  * @handle: a #RsvgHandle
  * @id: an element's id within the SVG
@@ -1520,17 +1520,17 @@ rsvg_handle_has_sub (RsvgHandle * handle,
     g_return_val_if_fail (handle, FALSE);
 
     if (G_UNLIKELY (!id || !id[0]))
-      return FALSE;
+        return FALSE;
 
     return rsvg_defs_lookup (handle->priv->defs, id) != NULL;
 }
 
-/** 
+/**
  * rsvg_set_default_dpi:
  * @dpi: Dots Per Inch (aka Pixels Per Inch)
  *
  * Sets the DPI for the all future outgoing pixbufs. Common values are
- * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi will 
+ * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi will
  * reset the DPI to whatever the default value happens to be.
  *
  * Since: 2.8
@@ -1541,13 +1541,13 @@ rsvg_set_default_dpi (double dpi)
     rsvg_set_default_dpi_x_y (dpi, dpi);
 }
 
-/** 
+/**
  * rsvg_set_default_dpi_x_y:
  * @dpi_x: Dots Per Inch (aka Pixels Per Inch)
  * @dpi_y: Dots Per Inch (aka Pixels Per Inch)
  *
  * Sets the DPI for the all future outgoing pixbufs. Common values are
- * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi will 
+ * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi will
  * reset the DPI to whatever the default value happens to be.
  *
  * Since: 2.8
@@ -1572,7 +1572,7 @@ rsvg_set_default_dpi_x_y (double dpi_x, double dpi_y)
  * @dpi: Dots Per Inch (aka Pixels Per Inch)
  *
  * Sets the DPI for the outgoing pixbuf. Common values are
- * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi will 
+ * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi will
  * reset the DPI to whatever the default value happens to be.
  *
  * Since: 2.8
@@ -1590,7 +1590,7 @@ rsvg_handle_set_dpi (RsvgHandle * handle, double dpi)
  * @dpi_y: Dots Per Inch (aka Pixels Per Inch)
  *
  * Sets the DPI for the outgoing pixbuf. Common values are
- * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi_x or #dpi_y will 
+ * 75, 90, and 300 DPI. Passing a number <= 0 to #dpi_x or #dpi_y will
  * reset the DPI to whatever the default value happens to be.
  *
  * Since: 2.8
@@ -2066,14 +2066,14 @@ void
 rsvg_bbox_clip (RsvgBbox * dst, RsvgBbox * src)
 {
     cairo_matrix_t affine;
-	double xmin, ymin;
-	double xmax, ymax;
+    double xmin, ymin;
+    double xmax, ymax;
     int i;
 
     if (src->virgin)
         return;
 
-	if (!dst->virgin) {
+    if (!dst->virgin) {
         xmin = dst->rect.x + dst->rect.width, ymin = dst->rect.y + dst->rect.height;
         xmax = dst->rect.x, ymax = dst->rect.y;
     } else {
@@ -2259,7 +2259,7 @@ _rsvg_handle_resolve_uri (RsvgHandle *handle,
     return resolved_uri;
 }
 
-guint8* 
+guint8*
 _rsvg_handle_acquire_data (RsvgHandle *handle,
                            const char *url,
                            char **content_type,
@@ -2272,10 +2272,10 @@ _rsvg_handle_acquire_data (RsvgHandle *handle,
     uri = _rsvg_handle_resolve_uri (handle, url);
 
     if (_rsvg_handle_allow_load (handle, uri, error)) {
-        data = _rsvg_io_acquire_data (uri, 
-                                      rsvg_handle_get_base_uri (handle), 
-                                      content_type, 
-                                      len, 
+        data = _rsvg_io_acquire_data (uri,
+                                      rsvg_handle_get_base_uri (handle),
+                                      content_type,
+                                      len,
                                       handle->priv->cancellable,
                                       error);
     } else {
@@ -2298,9 +2298,9 @@ _rsvg_handle_acquire_stream (RsvgHandle *handle,
     uri = _rsvg_handle_resolve_uri (handle, url);
 
     if (_rsvg_handle_allow_load (handle, uri, error)) {
-        stream = _rsvg_io_acquire_stream (uri, 
-                                          rsvg_handle_get_base_uri (handle), 
-                                          content_type, 
+        stream = _rsvg_io_acquire_stream (uri,
+                                          rsvg_handle_get_base_uri (handle),
+                                          content_type,
                                           handle->priv->cancellable,
                                           error);
     } else {

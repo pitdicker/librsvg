@@ -42,7 +42,7 @@
 # include <float.h>
 #endif
 
-G_BEGIN_DECLS 
+G_BEGIN_DECLS
 
 typedef struct RsvgSaxHandler RsvgSaxHandler;
 typedef struct RsvgDrawingCtx RsvgDrawingCtx;
@@ -157,7 +157,7 @@ struct RsvgHandlePrivate {
     RsvgSaxHandler *handler;
     int handler_nest;
 
-    GHashTable *entities;       /* g_malloc'd string -> xmlEntityPtr */
+    GHashTable *entities; /* g_malloc'd string -> xmlEntityPtr */
 
     xmlParserCtxtPtr ctxt;
     GError **error;
@@ -175,7 +175,7 @@ struct RsvgHandlePrivate {
 
     gboolean finished;
 
-    gboolean in_loop;		/* see get_dimension() */
+    gboolean in_loop; /* see get_dimension() */
 
     gboolean first_write;
     GInputStream *data_input_stream; /* for rsvg_handle_write of svgz data */
@@ -219,7 +219,7 @@ struct RsvgRender {
     void (*free) (RsvgRender * self);
 
     PangoContext    *(*create_pango_context)    (RsvgDrawingCtx * ctx);
-    void             (*render_pango_layout)	    (RsvgDrawingCtx * ctx, PangoLayout *layout,
+    void             (*render_pango_layout)     (RsvgDrawingCtx * ctx, PangoLayout *layout,
                                                  double x, double y);
     void             (*render_path)             (RsvgDrawingCtx * ctx, const cairo_path_t *path);
     void             (*render_surface)          (RsvgDrawingCtx * ctx, cairo_surface_t *surface,
@@ -334,15 +334,15 @@ struct _RsvgNodeChars {
 typedef void (*RsvgPropertyBagEnumFunc) (const char *key, const char *value, gpointer user_data);
 
 G_GNUC_INTERNAL
-RsvgPropertyBag	    *rsvg_property_bag_new       (const char **atts);
+RsvgPropertyBag     *rsvg_property_bag_new       (const char **atts);
 G_GNUC_INTERNAL
-RsvgPropertyBag	    *rsvg_property_bag_dup       (RsvgPropertyBag * bag);
+RsvgPropertyBag     *rsvg_property_bag_dup       (RsvgPropertyBag * bag);
 G_GNUC_INTERNAL
 void                 rsvg_property_bag_free      (RsvgPropertyBag * bag);
 G_GNUC_INTERNAL
 const char          *rsvg_property_bag_lookup    (RsvgPropertyBag * bag, const char *key);
 G_GNUC_INTERNAL
-guint                rsvg_property_bag_size	     (RsvgPropertyBag * bag);
+guint                rsvg_property_bag_size      (RsvgPropertyBag * bag);
 G_GNUC_INTERNAL
 void                 rsvg_property_bag_enumerate (RsvgPropertyBag * bag, RsvgPropertyBagEnumFunc func,
                                                   gpointer user_data);
@@ -352,7 +352,7 @@ GdkPixbuf *rsvg_pixbuf_from_data_with_size_data (const guchar * buff,
                                                  gpointer data,
                                                  const char *base_uri, GError ** error);
 G_GNUC_INTERNAL
-gboolean     rsvg_eval_switch_attributes	(RsvgPropertyBag * atts, gboolean * p_has_cond);
+gboolean     rsvg_eval_switch_attributes        (RsvgPropertyBag * atts, gboolean * p_has_cond);
 G_GNUC_INTERNAL
 gchar       *rsvg_get_base_uri_from_filename    (const gchar * file_name);
 G_GNUC_INTERNAL
@@ -395,7 +395,7 @@ RsvgLength _rsvg_css_parse_length (const char *str);
 G_GNUC_INTERNAL
 void _rsvg_push_view_box    (RsvgDrawingCtx * ctx, double w, double h);
 G_GNUC_INTERNAL
-void _rsvg_pop_view_box	    (RsvgDrawingCtx * ctx);
+void _rsvg_pop_view_box     (RsvgDrawingCtx * ctx);
 G_GNUC_INTERNAL
 void rsvg_SAX_handler_struct_init (void);
 G_GNUC_INTERNAL
@@ -417,21 +417,21 @@ GInputStream *_rsvg_handle_acquire_stream (RsvgHandle *handle,
                                            GError **error);
 
 
-#define rsvg_return_if_fail(expr, error)    G_STMT_START{			\
+#define rsvg_return_if_fail(expr, error)    G_STMT_START{           \
      if G_LIKELY(expr) { } else                                     \
        {                                                            \
            rsvg_return_if_fail_warning (G_STRFUNC,                  \
                                         #expr, error);              \
            return;                                                  \
-       };				}G_STMT_END
+       };               }G_STMT_END
 
-#define rsvg_return_val_if_fail(expr,val,error)	G_STMT_START{       \
+#define rsvg_return_val_if_fail(expr,val,error) G_STMT_START{       \
      if G_LIKELY(expr) { } else                                     \
        {                                                            \
            rsvg_return_if_fail_warning (G_STRFUNC,                  \
                                         #expr, error);              \
            return (val);                                            \
-       };				}G_STMT_END
+       };               }G_STMT_END
 
 G_END_DECLS
 
