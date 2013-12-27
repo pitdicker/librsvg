@@ -60,7 +60,7 @@ rsvg_node_path_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
 
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
-    rsvg_render_path (ctx, path->path);
+    rsvg_render_path (ctx, path->path, TRUE);
 }
 
 static void
@@ -196,7 +196,7 @@ _rsvg_node_poly_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
 
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
-    rsvg_render_path (ctx, poly->path);
+    rsvg_render_path (ctx, poly->path, TRUE);
 }
 
 static void
@@ -295,7 +295,7 @@ _rsvg_node_line_draw (RsvgNode * overself, RsvgDrawingCtx * ctx, int dominate)
     rsvg_state_reinherit_top (ctx, overself->state, dominate);
 
     path = rsvg_parse_path (d->str);
-    rsvg_render_path (ctx, path);
+    rsvg_render_path (ctx, path, TRUE);
     rsvg_cairo_path_destroy (path);
 
     g_string_free (d, TRUE);
@@ -372,7 +372,7 @@ _rsvg_node_rect_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     ry = _rsvg_css_normalize_length (&rect->ry, ctx, 'v');
 
     if (w == 0. || h == 0.)
-	return;
+        return;
 
     if (rect->got_rx)
         rx = rx;
@@ -476,7 +476,7 @@ _rsvg_node_rect_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
     path = rsvg_parse_path (d->str);
-    rsvg_render_path (ctx, path);
+    rsvg_render_path (ctx, path, FALSE);
     rsvg_cairo_path_destroy (path);
     g_string_free (d, TRUE);
 }
@@ -605,7 +605,7 @@ _rsvg_node_circle_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
     path = rsvg_parse_path (d->str);
-    rsvg_render_path (ctx, path);
+    rsvg_render_path (ctx, path, FALSE);
     rsvg_cairo_path_destroy (path);
 
     g_string_free (d, TRUE);
@@ -736,7 +736,7 @@ _rsvg_node_ellipse_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
     path = rsvg_parse_path (d->str);
-    rsvg_render_path (ctx, path);
+    rsvg_render_path (ctx, path, FALSE);
     rsvg_cairo_path_destroy (path);
 
     g_string_free (d, TRUE);

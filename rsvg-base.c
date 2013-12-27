@@ -1971,10 +1971,11 @@ rsvg_push_discrete_layer (RsvgDrawingCtx * ctx)
 }
 
 void
-rsvg_render_path (RsvgDrawingCtx * ctx, const cairo_path_t *path)
+rsvg_render_path (RsvgDrawingCtx * ctx, const cairo_path_t *path, gboolean rendermarkers)
 {
     ctx->render->render_path (ctx, path);
-    rsvg_render_markers (ctx, path);
+    if (rendermarkers)
+        rsvg_render_markers (ctx, path);
 }
 
 void
