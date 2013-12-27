@@ -544,11 +544,21 @@ rsvg_parse_path (const char *path_str)
 
     while (*path_str != 0) {
         switch (*path_str) {
-        case '0': case '1': case '2': case '3': case '4': case '5': case '6':
-        case '7': case '8': case '9': case '+': case '-': case '.':
+        case '.':
+            /* '.' must be followed by a number */
+            if ((end[1] >= 0 && end[1] <= '9'))
+                goto exitloop;
+        case '+': case '-':
+            /* '+' of '-' must be followed by a number, or
+               a '.' that is followed by a number */
+            if (!((end[1] >= 0 && end[1] <= '9') ||
+                  end[1] == '.' && !(end[2] >= 0 && end[2] <= '9')))
+                goto exitloop;
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9':
             val = g_ascii_strtod(path_str, (gchar **) &valend);
             if (!isfinite (val))
-                goto exitfor;
+                goto exitloop;
 
             ctx.params[ctx.param] = rsvg_path_coord_to_abs (&ctx, val);
             ctx.param++;
@@ -593,40 +603,41 @@ rsvg_parse_path (const char *path_str)
                 }
                 break;
             default:
-                goto exitfor;
+                goto exitloop;
             }
             break;
         case 'L': case 'C': case 'S': case 'H': case 'V': case 'Q': case 'T': case 'A':
             if (ctx.cmd == 0) /* only a moveto is accepted as the first command of path data */
-                goto exitfor;
+                goto exitloop;
         case 'M':
             if (ctx.param != 0)
-                goto exitfor;
+                goto exitloop;
             ctx.cmd = *path_str;
             ctx.rel = FALSE;
             break;
         case 'l': case 'c': case 's': case 'h': case 'v': case 'q': case 't': case 'a':
             if (ctx.cmd == 0) /* only a moveto is accepted as the first command of path data */
-                goto exitfor;
+                goto exitloop;
         case 'm':
             if (ctx.param != 0)
-                goto exitfor;
+                goto exitloop;
             ctx.cmd = *path_str - 'a' + 'A';
             ctx.rel = TRUE;
             break;
         case 'Z': case 'z':
             if (ctx.param != 0) /* only a moveto is accepted as the first command of path data */
-                goto exitfor;
+                goto exitloop;
             rsvg_parse_path_closepath (&ctx);
             ctx.cmd = 'Z';
             break;
         case ' ': case '\t': case '\r': case '\n': case ',':
             break;
         default:
-            goto exitfor;
+            goto exitloop;
         }
         path_str++;
     }
+exitloop:
     return rsvg_path_builder_finish (&ctx.builder);
 }
 
