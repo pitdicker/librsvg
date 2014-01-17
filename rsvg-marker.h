@@ -28,7 +28,7 @@
 
 #include "rsvg-structure.h"
 
-G_BEGIN_DECLS 
+G_BEGIN_DECLS
 
 typedef struct _RsvgMarker RsvgMarker;
 
@@ -43,15 +43,15 @@ struct _RsvgMarker {
 };
 
 G_GNUC_INTERNAL
-RsvgNode    *rsvg_new_marker	    (void);
+RsvgNode    *rsvg_new_marker        (void);
 G_GNUC_INTERNAL
-void	     rsvg_marker_render	    (RsvgMarker * self, gdouble x, gdouble y, 
-				     gdouble orient, gdouble linewidth, RsvgDrawingCtx * ctx);
+void         rsvg_marker_render     (RsvgMarker * self, gdouble x, gdouble y,
+                                     gdouble orient, gdouble linewidth, RsvgDrawingCtx * ctx);
 G_GNUC_INTERNAL
-RsvgNode    *rsvg_marker_parse	    (const RsvgDefs * defs, const char *str);
+RsvgNode    *rsvg_marker_parse      (const RsvgDefs * defs, const char *str);
 G_GNUC_INTERNAL
-void	     rsvg_render_markers    (RsvgDrawingCtx *ctx, const cairo_path_t *path);
+void         rsvg_render_markers    (RsvgDrawingCtx *ctx, const RSVGPathSegm *path);
 
 G_END_DECLS
 
-#endif                          /* RSVG_MARKER_H */
+#endif /* RSVG_MARKER_H */

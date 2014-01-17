@@ -22,6 +22,7 @@
    Boston, MA 02111-1307, USA.
 
    Authors: Caleb Moore <c.moore@student.unsw.edu.au>
+            Paul Dicker <pitdicker@gmail.com>
 */
 
 #include "config.h"
@@ -29,17 +30,13 @@
 #include "rsvg-marker.h"
 #include "rsvg-private.h"
 #include "rsvg-styles.h"
-#include "rsvg-shapes.h"
 #include "rsvg-css.h"
 #include "rsvg-defs.h"
-#include "rsvg-filter.h"
-#include "rsvg-mask.h"
 #include "rsvg-image.h"
 #include "rsvg-path.h"
 
 #include <string.h>
 #include <math.h>
-#include <errno.h>
 
 static void
 rsvg_node_marker_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
@@ -202,196 +199,124 @@ rsvg_marker_parse (const RsvgDefs * defs, const char *str)
     return NULL;
 }
 
-void
-rsvg_render_markers (RsvgDrawingCtx * ctx,
-                     const cairo_path_t *path)
-{
-    double x, y;
-    double linewidth;
-    cairo_path_data_type_t intype, outtype;
-    double xdifin, ydifin, xdifout, ydifout, xdifstart, ydifstart, tot;
-    int in, out, num_data;
-    gboolean closed;
-    int renderstart, rendermiddle;
+static double
+rsvg_marker_calc_angle (double indirx, double indiry,
+                        double outdirx, double outdiry) {
+    if (fabs (indirx + outdirx) < DBL_EPSILON &&
+        fabs (indiry + outdiry) < DBL_EPSILON) {
+        return atan2 (indiry, indirx);
+/*        return atan2 (indirx, -indiry); TODO: perpendicular makes more sense... */
+    }
 
+    return atan2 (indiry + outdiry, indirx + outdirx);
+}
+
+void
+rsvg_render_markers (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
+{
     RsvgState *state;
-    RsvgMarker *startmarker;
-    RsvgMarker *middlemarker;
-    RsvgMarker *endmarker;
-    cairo_path_data_t *data;
-    cairo_path_data_t prevp, nextp;
+    RsvgMarker *startmarker, *middlemarker, *endmarker;
+    double linewidth;
+
+    double indirx, indiry, outdirx, outdiry;
+    double nextindirx, nextindiry, tempdirx, tempdiry;
+    double angle;
+    guint i, number_of_items;
 
     state = rsvg_current_state (ctx);
-
     linewidth = _rsvg_css_normalize_length (&state->stroke_width, ctx, 'o');
+
     startmarker = (RsvgMarker *) state->startMarker;
     middlemarker = (RsvgMarker *) state->middleMarker;
     endmarker = (RsvgMarker *) state->endMarker;
 
-    /* this function makes the assumptions about the path data:
-       - the first element is always a MOVE_TO
-       - every CLOSE_TO is followed by a MOVE_TO, containing the start point of
-         the current subpath */
-
-    if (linewidth == 0)
-        return;
-
-    if (!startmarker && !middlemarker && !endmarker)
-        return;
-
-    if (path->num_data <= 2) /* the path only contains a MOVE_TO */
-        return;
-
-    data = &path->data[0];
-    num_data = path->num_data;
-
-    renderstart = 1;
-    rendermiddle = 0;
-    closed = FALSE;
-    prevp = data[1];
-    xdifin = ydifin = 0;
-
-    for (in = 0; in < num_data; in += data[in].header.length) {
-        intype = data[in].header.type;
-        if (intype == CAIRO_PATH_CLOSE_PATH)
-            in++; /* get position from next MOVE_TO */
-        x = data[in + data[in].header.length - 1].point.x;
-        y = data[in + data[in].header.length - 1].point.y;
-
-        rendermiddle++;
-
-        /* if this is a new subpath: determine if this subpath is closed */
-        if (intype == CAIRO_PATH_MOVE_TO) {
-            closed = FALSE;
-            for (out = in + data[in].header.length; out < num_data; out += data[out].header.length) {
-                 if (closed) {
-                    /* a path only really counts as closed if CLOSE_PATH is
-                     * directly followed by a MOVE_TO or nothing */
-                    if (data[out].header.type != CAIRO_PATH_MOVE_TO)
-                        closed = FALSE;
-                } else {
-                    if (data[out].header.type == CAIRO_PATH_CLOSE_PATH) {
-                        closed = TRUE;
-                        out++; /* prepare to skip next MOVE_TO */
-                    } else if (data[out].header.type == CAIRO_PATH_MOVE_TO) {
-                        break;
-                    }
-                }
-            }
-            if (closed) {
-                /* render one marker less, because this will be done at the end
-                 * of the CLOSE_PATH segment */
-                rendermiddle--;
-                /* direction will be set once the outgoing direction is known */
-                xdifstart = ydifstart = 0;
-            }
-        }
-
-        out = in + data[in].header.length;
-        if (out < num_data) {
-            /* determine position of next vertex */
-            outtype = data[out].header.type;
-            if (outtype == CAIRO_PATH_CLOSE_PATH)
-                out++;/* get position from next MOVE_TO */
-            nextp = data[out + data[out].header.length - 1];
-
-            /* determine outgoing angle */
-            if (intype == CAIRO_PATH_CLOSE_PATH && outtype == CAIRO_PATH_MOVE_TO) {
-                xdifout = xdifstart;
-                ydifout = ydifstart;
-            } else if (outtype == CAIRO_PATH_CURVE_TO &&
-                (x != data[out + 1].point.x || y != data[out + 1].point.y)) {
-                xdifout = data[out + 1].point.x - x;
-                ydifout = data[out + 1].point.y - y;
-            } else if (outtype == CAIRO_PATH_CURVE_TO &&
-                (x != data[out + 2].point.x || y != data[out + 2].point.y)) {
-                xdifout = data[out + 2].point.x - x;
-                ydifout = data[out + 2].point.y - y;
-            } else if (x != nextp.point.x || y != nextp.point.y) {
-                xdifout = nextp.point.x - x;
-                ydifout = nextp.point.y - y;
-            } else {
-                continue;
-            }
-        } else {
-            /* the end of the path is reached */
-            if (intype == CAIRO_PATH_CLOSE_PATH) {
-                xdifout = xdifstart;
-                ydifout = ydifstart;
-            } else {
-                xdifout = xdifin;
-                ydifout = ydifin;
-                rendermiddle--;
-            }
-        }
-
-        /* if from a closed subpath this is the first segment that has a direction,
-         * remember this direction as the direction of the start of this subpath */
-        if (closed && (xdifstart == 0 && ydifstart == 0) &&
-            (xdifout != 0 || ydifout != 0)) {
-            xdifstart = xdifout;
-            ydifstart = ydifout;
-        }
-
-        /* determine incoming angle */
-        if (intype == CAIRO_PATH_CURVE_TO &&
-            (x != data[in + 2].point.x || y != data[in + 2].point.y)) {
-            xdifin = x - data[in + 2].point.x;
-            ydifin = y - data[in + 2].point.y;
-        } else if (intype == CAIRO_PATH_CURVE_TO &&
-                   (x != data[in + 1].point.x || y != data[in + 1].point.y)) {
-            xdifin = x - data[in + 1].point.x;
-            ydifin = y - data[in + 1].point.y;
-        } else if (x != prevp.point.x || y != prevp.point.y) {
-            xdifin = x - prevp.point.x;
-            ydifin = y - prevp.point.y;
-        } else if ((xdifin == 0 && ydifin == 0) &&
-                   (xdifout != 0 || ydifout != 0)) {
-            /* there has not yet been a segment with an incoming direction,
-               but an outgoing direction is known */
-            xdifin = xdifout;
-            ydifin = ydifout;
-        } else {
-            /* just keep the last known incoming angle */
-        }
-
-        /* the actual rendering */
-        if (renderstart == 1) {
-            if (startmarker && (closed == FALSE || !middlemarker)) {
-                rsvg_marker_render (startmarker, x, y,
-                                    atan2 (ydifout, xdifout),
-                                    linewidth, ctx);
-            }
-            renderstart = 0;
-            rendermiddle--;
-        }
-
-        if (middlemarker && rendermiddle >= 1) {
-            tot = sqrt (xdifin * xdifin + ydifin * ydifin);
-            if (tot) {
-                xdifin /= tot;
-                ydifin /= tot;
-            }
-            tot = sqrt (xdifout * xdifout + ydifout * ydifout);
-            if (tot) {
-                xdifout /= tot;
-                ydifout /= tot;
-            }
-            for (; rendermiddle > 0; rendermiddle--) {
-                rsvg_marker_render (middlemarker, x, y,
-                                    atan2 (ydifin + ydifout, xdifin + xdifout),
-                                    linewidth, ctx);
-             }
-        }
-        rendermiddle = 0;
-
-        prevp.point.x = x;
-        prevp.point.y = y;
+    if (linewidth == 0.) {
+        /* If a marker is scaled to the current lineweight, do not render it if
+           the lineweight is 0.0 */
+        if (startmarker && startmarker->bbox)
+            startmarker = NULL;
+        if (middlemarker && middlemarker->bbox)
+            middlemarker = NULL;
+        if (endmarker && endmarker->bbox)
+            endmarker = NULL;
     }
 
-    if (endmarker && (closed == FALSE || !middlemarker)) {
-        rsvg_marker_render (endmarker, x, y,
-                            atan2 (ydifin, xdifin),
-                            linewidth, ctx);
+    if (path == NULL)
+        return;
+
+    number_of_items = path[0].att.path.number_of_items;
+
+    if (startmarker) {
+        angle = 0.;
+        if (startmarker->orientAuto) {
+            rsvg_path_get_segm_dir (path, 1, &outdirx, &outdiry,
+                                    &tempdirx, &tempdiry);
+
+            if (path[0].att.subpath.next_length != 0) {
+                rsvg_path_get_segm_dir (path, path[0].att.subpath.next_length,
+                                        &tempdirx, &tempdiry,
+                                        &indirx, &indiry);
+                angle = rsvg_marker_calc_angle (indirx, indiry, outdirx, outdiry);
+            } else {
+                angle = atan2 (outdiry, outdirx);
+            }
+        }
+        rsvg_marker_render (startmarker, path[0].x, path[0].y,
+                            angle, linewidth, ctx);
+    }
+
+    if (middlemarker) {
+        angle = 0.;
+        for (i = 1; i < number_of_items - 1; i++) {
+            if (middlemarker->orientAuto) {
+                if ((path[i].type == PATHSEG_MOVETO_ABS ||
+                      path[i].type == PATHSEG_MOVETO_REL) &&
+                      path[i].att.subpath.next_length != 0) {
+                    rsvg_path_get_segm_dir (path, i + path[i].att.subpath.next_length,
+                                            &tempdirx, &tempdiry,
+                                            &indirx, &indiry);
+                } else {
+                    rsvg_path_get_segm_dir (path, i, &tempdirx, &tempdiry,
+                                            &indirx, &indiry);
+                }
+
+                if (path[i].type == PATHSEG_CLOSEPATH &&
+                    (path[i + 1].type == PATHSEG_MOVETO_ABS ||
+                     path[i + 1].type == PATHSEG_MOVETO_REL) ) {
+                     rsvg_path_get_segm_dir (path, i - path[i].att.subpath.prev_length + 1,
+                                            &outdirx, &outdiry,
+                                            &tempdirx, &tempdiry);
+                } else {
+                    rsvg_path_get_segm_dir (path, i + 1, &outdirx, &outdiry,
+                                            &tempdirx, &tempdiry);
+                }
+
+                angle = rsvg_marker_calc_angle (indirx, indiry, outdirx, outdiry);
+                /* TODO: cache previous outdir */
+            }
+            rsvg_marker_render (middlemarker, path[i].x, path[i].y,
+                                angle, linewidth, ctx);
+        }
+    }
+
+    if (endmarker) {
+        i = number_of_items - 1;
+        angle = 0.;
+        if (endmarker->orientAuto) {
+            rsvg_path_get_segm_dir (path, i, &tempdirx, &tempdiry,
+                                    &indirx, &indiry);
+
+            if (path[i].type == PATHSEG_CLOSEPATH) {
+                rsvg_path_get_segm_dir (path, i - path[i].att.subpath.prev_length + 1,
+                                        &outdirx, &outdiry,
+                                        &tempdirx, &tempdiry);
+                angle = rsvg_marker_calc_angle (indirx, indiry, outdirx, outdiry);
+            } else {
+                angle = atan2 (indiry, indirx);
+            }
+        }
+        rsvg_marker_render (endmarker, path[i].x, path[i].y,
+                            angle, linewidth, ctx);
+
     }
 }
