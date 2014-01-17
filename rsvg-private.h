@@ -331,6 +331,61 @@ struct _RsvgNodeChars {
     GString *contents;
 };
 
+typedef enum {
+    PATHSEG_UNKNOWN = 0,
+    PATHSEG_CLOSEPATH = 1,
+    PATHSEG_MOVETO_ABS = 2,
+    PATHSEG_MOVETO_REL = 3,
+    PATHSEG_LINETO_ABS = 4,
+    PATHSEG_LINETO_REL = 5,
+    PATHSEG_CURVETO_CUBIC_ABS = 6,
+    PATHSEG_CURVETO_CUBIC_REL = 7,
+    PATHSEG_CURVETO_QUADRATIC_ABS = 8,
+    PATHSEG_CURVETO_QUADRATIC_REL = 9,
+    PATHSEG_ARC_ABS = 10,
+    PATHSEG_ARC_REL = 11,
+    PATHSEG_LINETO_HORIZONTAL_ABS = 12,
+    PATHSEG_LINETO_HORIZONTAL_REL = 13,
+    PATHSEG_LINETO_VERTICAL_ABS = 14,
+    PATHSEG_LINETO_VERTICAL_REL = 15,
+    PATHSEG_CURVETO_CUBIC_SMOOTH_ABS = 16,
+    PATHSEG_CURVETO_CUBIC_SMOOTH_REL = 17,
+    PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS = 18,
+    PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL = 19,
+} RsvgPathSegmentType;
+
+#define RSVG_ARC_FLAG_LARGEARC (1 << 0)
+#define RSVG_ARC_FLAG_SWEEP    (1 << 1)
+
+typedef struct {
+    RsvgPathSegmentType type;
+    double x, y;
+    union {
+        struct {
+            /* set on the first segment of a path (which is always a moveto) */
+            guint number_of_items;
+        } path;
+        struct {
+            /* set on moveto's and closepaths to the length of a closed subpath.
+               (set to 0 if the previous / next subpath is open) */
+            guint prev_length;
+            guint next_length;
+        } subpath;
+        struct {
+            /* only x1 and y1 are set on quadratic curveto's, all are set on
+               cubic curveto's */
+            double x1, y1;
+            double x2, y2;
+        } c;
+        struct {
+            /* set on arc segments */
+            double r1, r2;
+            double angle;
+            guint flags;
+        } a;
+    } att;
+} RSVGPathSegm;
+
 typedef void (*RsvgPropertyBagEnumFunc) (const char *key, const char *value, gpointer user_data);
 
 G_GNUC_INTERNAL
@@ -360,7 +415,7 @@ void rsvg_pop_discrete_layer    (RsvgDrawingCtx * ctx);
 G_GNUC_INTERNAL
 void rsvg_push_discrete_layer   (RsvgDrawingCtx * ctx);
 G_GNUC_INTERNAL
-void rsvg_render_path           (RsvgDrawingCtx * ctx, const cairo_path_t *path, gboolean rendermarkers);
+void rsvg_render_path           (RsvgDrawingCtx * ctx, const RSVGPathSegm *path);
 G_GNUC_INTERNAL
 void rsvg_render_surface        (RsvgDrawingCtx * ctx, cairo_surface_t *surface,
                                  double x, double y, double w, double h);

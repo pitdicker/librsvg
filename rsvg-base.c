@@ -40,6 +40,7 @@
 #include "rsvg-mask.h"
 #include "rsvg-marker.h"
 #include "rsvg-cairo-render.h"
+#include "rsvg-cairo-path.h"
 
 #include <libxml/uri.h>
 #include <libxml/parser.h>
@@ -1971,11 +1972,12 @@ rsvg_push_discrete_layer (RsvgDrawingCtx * ctx)
 }
 
 void
-rsvg_render_path (RsvgDrawingCtx * ctx, const cairo_path_t *path, gboolean rendermarkers)
+rsvg_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
 {
-    ctx->render->render_path (ctx, path);
-    if (rendermarkers)
-        rsvg_render_markers (ctx, path);
+    cairo_path_t *cairopath;
+    cairopath = rsvg_build_cairo_path (path);
+    ctx->render->render_path (ctx, cairopath);
+    rsvg_cairo_path_destroy (cairopath);
 }
 
 void

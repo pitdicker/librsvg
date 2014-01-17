@@ -5,6 +5,7 @@
 
    Copyright (C) 2000 Eazel, Inc.
    Copyright (C) 2002 Dom Lachowicz <cinamod@hotmail.com>
+   Copyright (C) 2013 Paul Dicker <pitdicker@gmail.com>
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
@@ -24,11 +25,12 @@
    Authors: Raph Levien <raph@artofcode.com>,
             Dom Lachowicz <cinamod@hotmail.com>,
             Caleb Moore <c.moore@student.unsw.edu.au>
+            Paul Dicker <pitdicker@gmail.com>
 */
-#include <string.h>
-#include <math.h>
-#include <errno.h>
-#include <stdio.h>
+
+#include "config.h"
+
+#include <glib.h>
 
 #include "rsvg-private.h"
 #include "rsvg-styles.h"
@@ -36,300 +38,7 @@
 #include "rsvg-css.h"
 #include "rsvg-defs.h"
 #include "rsvg-path.h"
-
-/* 4/3 * (1-cos 45°)/sin 45° = 4/3 * sqrt(2) - 1 */
-#define RSVG_ARC_MAGIC ((double) 0.5522847498)
-
-static void
-rsvg_node_path_free (RsvgNode * self)
-{
-    RsvgNodePath *path = (RsvgNodePath *) self;
-    if (path->path)
-        rsvg_cairo_path_destroy (path->path);
-    _rsvg_node_finalize (&path->super);
-    g_free (path);
-}
-
-static void
-rsvg_node_path_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
-{
-    RsvgNodePath *path = (RsvgNodePath *) self;
-
-    if (!path->path)
-        return;
-
-    rsvg_state_reinherit_top (ctx, self->state, dominate);
-
-    rsvg_render_path (ctx, path->path, TRUE);
-}
-
-static void
-rsvg_node_path_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
-{
-    const char *klazz = NULL, *id = NULL, *value;
-    RsvgNodePath *path = (RsvgNodePath *) self;
-
-    if (rsvg_property_bag_size (atts)) {
-        if ((value = rsvg_property_bag_lookup (atts, "d"))) {
-            if (path->path)
-                rsvg_cairo_path_destroy (path->path);
-            path->path = rsvg_parse_path (value);
-        }
-        if ((value = rsvg_property_bag_lookup (atts, "class")))
-            klazz = value;
-        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
-            id = value;
-            rsvg_defs_register_name (ctx->priv->defs, value, self);
-        }
-
-        rsvg_parse_style_attrs (ctx, self->state, "path", klazz, id, atts);
-    }
-}
-
-RsvgNode *
-rsvg_new_path (void)
-{
-    RsvgNodePath *path;
-    path = g_new (RsvgNodePath, 1);
-    _rsvg_node_init (&path->super, RSVG_NODE_TYPE_PATH);
-    path->path = NULL;
-    path->super.free = rsvg_node_path_free;
-    path->super.draw = rsvg_node_path_draw;
-    path->super.set_atts = rsvg_node_path_set_atts;
-
-    return &path->super;
-}
-
-struct _RsvgNodePoly {
-    RsvgNode super;
-    cairo_path_t *path;
-};
-
-typedef struct _RsvgNodePoly RsvgNodePoly;
-
-static cairo_path_t *
-_rsvg_node_poly_build_path (const char *value,
-                            gboolean close_path);
-
-static void
-_rsvg_node_poly_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
-{
-    RsvgNodePoly *poly = (RsvgNodePoly *) self;
-    const char *klazz = NULL, *id = NULL, *value;
-
-    if (rsvg_property_bag_size (atts)) {
-        /* support for svg < 1.0 which used verts */
-        if ((value = rsvg_property_bag_lookup (atts, "verts"))
-            || (value = rsvg_property_bag_lookup (atts, "points"))) {
-            if (poly->path)
-                rsvg_cairo_path_destroy (poly->path);
-            poly->path = _rsvg_node_poly_build_path (value,
-                                                     RSVG_NODE_TYPE (self) == RSVG_NODE_TYPE_POLYGON);
-        }
-        if ((value = rsvg_property_bag_lookup (atts, "class")))
-            klazz = value;
-        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
-            id = value;
-            rsvg_defs_register_name (ctx->priv->defs, value, self);
-        }
-
-        rsvg_parse_style_attrs (ctx, self->state,
-                                RSVG_NODE_TYPE (self) == RSVG_NODE_TYPE_POLYLINE ? "polyline" : "polygon",
-                                klazz, id, atts);
-    }
-
-}
-
-static cairo_path_t *
-_rsvg_node_poly_build_path (const char *value,
-                            gboolean close_path)
-{
-    GString *d;
-    cairo_path_t *path;
-    const char *end, *lastconst;
-    int constants;
-
-    /* If the data of a polygon is not valid, it will be cut off by
-       rsvg_parse_path. This will also removes the close-path command.
-       To keep the polygon closed, validate the data first and copy only the
-       valid part to the path data. */
-
-    constants = 0;
-    end = lastconst = value;
-
-    while (*end != 0) {
-        switch (*end) {
-        case '.':
-            /* '.' must be followed by a number */
-            if ((end[1] >= 0 && end[1] <= '9'))
-                goto exitloop;
-        case '+': case '-':
-            /* '+' of '-' must be followed by a number, or
-               a '.' that is followed by a number */
-            if (!((end[1] >= 0 && end[1] <= '9') ||
-                  end[1] == '.' && !(end[2] >= 0 && end[2] <= '9')))
-                goto exitloop;
-        case '0': case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8': case '9':
-            /* call strtod to determine the number of characters this number
-               uses, but ignore the return value */
-            lastconst = end;
-            g_ascii_strtod(end, (gchar **) &end);
-            constants++;
-            break;
-        case ' ': case '\t': case '\r': case '\n': case ',':
-            end++;
-            break;
-        default: /* invalid character */
-            goto exitloop;
-        }
-    }
-exitloop:
-
-    if ((constants & 1) == 1) /* odd number of constants, ignore last one */
-        end = lastconst;
-
-    if (constants == 0)
-        return NULL;
-
-    d = g_string_new ("M");
-    g_string_append_len (d, value, (gssize) (end - value));
-
-    if (close_path)
-        g_string_append (d, " Z");
-
-    path = rsvg_parse_path (d->str);
-    g_string_free (d, TRUE);
-
-    return path;
-}
-
-static void
-_rsvg_node_poly_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
-{
-    RsvgNodePoly *poly = (RsvgNodePoly *) self;
-
-    if (poly->path == NULL)
-        return;
-
-    rsvg_state_reinherit_top (ctx, self->state, dominate);
-
-    rsvg_render_path (ctx, poly->path, TRUE);
-}
-
-static void
-_rsvg_node_poly_free (RsvgNode * self)
-{
-    RsvgNodePoly *poly = (RsvgNodePoly *) self;
-    if (poly->path)
-        rsvg_cairo_path_destroy (poly->path);
-    _rsvg_node_finalize (&poly->super);
-    g_free (poly);
-}
-
-static RsvgNode *
-rsvg_new_any_poly (RsvgNodeType type)
-{
-    RsvgNodePoly *poly;
-    poly = g_new (RsvgNodePoly, 1);
-    _rsvg_node_init (&poly->super, type);
-    poly->super.free = _rsvg_node_poly_free;
-    poly->super.draw = _rsvg_node_poly_draw;
-    poly->super.set_atts = _rsvg_node_poly_set_atts;
-    poly->path = NULL;
-    return &poly->super;
-}
-
-RsvgNode *
-rsvg_new_polygon (void)
-{
-    return rsvg_new_any_poly (RSVG_NODE_TYPE_POLYGON);
-}
-
-RsvgNode *
-rsvg_new_polyline (void)
-{
-    return rsvg_new_any_poly (RSVG_NODE_TYPE_POLYLINE);
-}
-
-
-struct _RsvgNodeLine {
-    RsvgNode super;
-    RsvgLength x1, x2, y1, y2;
-};
-
-typedef struct _RsvgNodeLine RsvgNodeLine;
-
-static void
-_rsvg_node_line_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
-{
-    const char *klazz = NULL, *id = NULL, *value;
-    RsvgNodeLine *line = (RsvgNodeLine *) self;
-
-    if (rsvg_property_bag_size (atts)) {
-        if ((value = rsvg_property_bag_lookup (atts, "x1")))
-            line->x1 = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "y1")))
-            line->y1 = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "x2")))
-            line->x2 = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "y2")))
-            line->y2 = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "class")))
-            klazz = value;
-        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
-            id = value;
-            rsvg_defs_register_name (ctx->priv->defs, value, self);
-        }
-
-        rsvg_parse_style_attrs (ctx, self->state, "line", klazz, id, atts);
-    }
-}
-
-static void
-_rsvg_node_line_draw (RsvgNode * overself, RsvgDrawingCtx * ctx, int dominate)
-{
-    GString *d;
-    cairo_path_t *path;
-    char buf[G_ASCII_DTOSTR_BUF_SIZE];
-    RsvgNodeLine *self = (RsvgNodeLine *) overself;
-
-    /* emulate a line using a path */
-    /* ("M %f %f L %f %f", x1, y1, x2, y2) */
-    d = g_string_new ("M");
-
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf),
-                                        _rsvg_css_normalize_length (&self->x1, ctx, 'h')));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf),
-                                        _rsvg_css_normalize_length (&self->y1, ctx, 'v')));
-    g_string_append (d, " L");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf),
-                                        _rsvg_css_normalize_length (&self->x2, ctx, 'h')));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf),
-                                        _rsvg_css_normalize_length (&self->y2, ctx, 'v')));
-
-    rsvg_state_reinherit_top (ctx, overself->state, dominate);
-
-    path = rsvg_parse_path (d->str);
-    g_string_free (d, TRUE);
-
-    rsvg_render_path (ctx, path, TRUE);
-    rsvg_cairo_path_destroy (path);
-}
-
-RsvgNode *
-rsvg_new_line (void)
-{
-    RsvgNodeLine *line;
-    line = g_new (RsvgNodeLine, 1);
-    _rsvg_node_init (&line->super, RSVG_NODE_TYPE_LINE);
-    line->super.draw = _rsvg_node_line_draw;
-    line->super.set_atts = _rsvg_node_line_set_atts;
-    line->x1 = line->x2 = line->y1 = line->y2 = _rsvg_css_parse_length ("0");
-    return &line->super;
-}
+#include "rsvg-marker.h"
 
 struct _RsvgNodeRect {
     RsvgNode super;
@@ -377,10 +86,9 @@ static void
 _rsvg_node_rect_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
 {
     double x, y, w, h, rx, ry;
-    GString *d = NULL;
-    cairo_path_t *path;
     RsvgNodeRect *rect = (RsvgNodeRect *) self;
-    char buf[G_ASCII_DTOSTR_BUF_SIZE];
+    GArray *pathdata;
+    RSVGPathSegm * path;
 
     x = _rsvg_css_normalize_length (&rect->x, ctx, 'h');
     y = _rsvg_css_normalize_length (&rect->y, ctx, 'v');
@@ -414,84 +122,47 @@ _rsvg_node_rect_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     else if (ry == 0.)
         rx = 0.;
 
-    /* emulate a rect using a path */
     if (rx == 0.) {
-        d = g_string_new ("m");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), y));
-
-        g_string_append (d, " h");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), w));
-
-        g_string_append (d, " v");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), h));
-
-        g_string_append (d, " h");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), -w));
-
-        g_string_append (d, " z");
+        rsvg_path_builder_init (&pathdata, 5);
+        rsvg_path_builder_move_to (&pathdata, x, y,
+                                   PATHSEG_MOVETO_ABS);
+        rsvg_path_builder_line_to (&pathdata, x + w, y,
+                                   PATHSEG_LINETO_HORIZONTAL_REL);
+        rsvg_path_builder_line_to (&pathdata, x + w, y + h,
+                                   PATHSEG_LINETO_VERTICAL_REL);
+        rsvg_path_builder_line_to (&pathdata, x, y + h,
+                                   PATHSEG_LINETO_HORIZONTAL_REL);
+        rsvg_path_builder_close_path (&pathdata, 0);
     } else {
-        d = g_string_new ("M");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), y + ry));
-
-        g_string_append (d, " A");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), rx));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), ry));
-        g_string_append (d, " 0 0 1 ");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x + rx));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), y));
-
-        g_string_append (d, " H");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x + w - rx));
-
-        g_string_append (d, " A");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), rx));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), ry));
-        g_string_append (d, " 0 0 1 ");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x + w));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), y + ry));
-
-        g_string_append (d, " V");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), y + h - ry));
-
-        g_string_append (d, " A");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), rx));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), ry));
-        g_string_append (d, " 0 0 1 ");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x + w - rx));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), y + h));
-
-        g_string_append (d, " H");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x + rx));
-
-        g_string_append (d, " A");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), rx));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), ry));
-        g_string_append (d, " 0 0 1 ");
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), x));
-        g_string_append_c (d, ',');
-        g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), y + h - ry));
-
-        g_string_append (d, " Z");
+        rsvg_path_builder_init (&pathdata, 9);
+        rsvg_path_builder_move_to (&pathdata, x, y + ry,
+                                   PATHSEG_MOVETO_ABS);
+        rsvg_path_builder_elliptical_arc (&pathdata, x + rx, y,
+                                          rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
+                                          PATHSEG_ARC_REL);
+        rsvg_path_builder_line_to (&pathdata, x + w - rx, y,
+                                   PATHSEG_LINETO_HORIZONTAL_REL);
+        rsvg_path_builder_elliptical_arc (&pathdata, x + w, y + ry,
+                                          rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
+                                          PATHSEG_ARC_REL);
+        rsvg_path_builder_line_to (&pathdata, x + w, y + h - ry,
+                                   PATHSEG_LINETO_VERTICAL_REL);
+        rsvg_path_builder_elliptical_arc (&pathdata, x + w - rx, y + h,
+                                          rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
+                                          PATHSEG_ARC_REL);
+        rsvg_path_builder_line_to (&pathdata, x + rx, y + h,
+                                   PATHSEG_LINETO_HORIZONTAL_REL);
+        rsvg_path_builder_elliptical_arc (&pathdata, x, y + h - ry,
+                                          rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
+                                          PATHSEG_ARC_REL);
+        rsvg_path_builder_close_path (&pathdata, 0);
     }
+    path = rsvg_path_builder_finish (pathdata);
 
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
-    path = rsvg_parse_path (d->str);
-    g_string_free (d, TRUE);
-
-    rsvg_render_path (ctx, path, FALSE);
-    rsvg_cairo_path_destroy (path);
+    rsvg_render_path (ctx, path);
+    rsvg_path_destroy (path);
 }
 
 RsvgNode *
@@ -541,10 +212,9 @@ _rsvg_node_circle_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag *
 static void
 _rsvg_node_circle_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
 {
-    GString *d = NULL;
-    cairo_path_t *path;
     RsvgNodeCircle *circle = (RsvgNodeCircle *) self;
-    char buf[G_ASCII_DTOSTR_BUF_SIZE];
+    GArray *pathdata;
+    RSVGPathSegm * path;
     double cx, cy, r;
 
     cx = _rsvg_css_normalize_length (&circle->cx, ctx, 'h');
@@ -557,75 +227,22 @@ _rsvg_node_circle_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     if (r < 0)
         return; /* TODO: the whole document should stop rendering at this point */
 
-    /* approximate a circle using 4 bezier curves */
-
-    d = g_string_new ("M");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + r));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy));
-
-    g_string_append (d, " C");
-
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + r));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + r));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + r));
-
-    g_string_append (d, " C");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + r));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - r));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - r));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy));
-
-    g_string_append (d, " C");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - r));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - r));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - r));
-
-    g_string_append (d, " C");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - r));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + r));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - r * RSVG_ARC_MAGIC));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + r));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy));
-
-    g_string_append (d, " Z");
+    rsvg_path_builder_init (&pathdata, 4);
+    rsvg_path_builder_move_to (&pathdata, cx + r, cy,
+                               PATHSEG_MOVETO_ABS);
+    rsvg_path_builder_elliptical_arc (&pathdata, cx - r, cy,
+                                      r, r, 0., RSVG_ARC_FLAG_SWEEP,
+                                      PATHSEG_ARC_REL);
+    rsvg_path_builder_elliptical_arc (&pathdata, cx + r, cy,
+                                      r, r, 0., RSVG_ARC_FLAG_SWEEP,
+                                      PATHSEG_ARC_REL);
+    rsvg_path_builder_close_path (&pathdata, 0);
+    path = rsvg_path_builder_finish (pathdata);
 
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
-    path = rsvg_parse_path (d->str);
-    g_string_free (d, TRUE);
-
-    rsvg_render_path (ctx, path, FALSE);
-    rsvg_cairo_path_destroy (path);
+    rsvg_render_path (ctx, path);
+    rsvg_path_destroy (path);
 }
 
 RsvgNode *
@@ -677,9 +294,8 @@ static void
 _rsvg_node_ellipse_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
 {
     RsvgNodeEllipse *ellipse = (RsvgNodeEllipse *) self;
-    GString *d = NULL;
-    cairo_path_t *path;
-    char buf[G_ASCII_DTOSTR_BUF_SIZE];
+    GArray *pathdata;
+    RSVGPathSegm * path;
     double cx, cy, rx, ry;
 
     cx = _rsvg_css_normalize_length (&ellipse->cx, ctx, 'h');
@@ -693,74 +309,22 @@ _rsvg_node_ellipse_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     if (rx < 0 || ry < 0)
         return; /* TODO: the whole document should stop rendering at this point */
 
-    /* approximate an ellipse using 4 bezier curves */
-
-    d = g_string_new ("M ");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + rx));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy));
-
-    g_string_append (d, " C");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - RSVG_ARC_MAGIC * ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + RSVG_ARC_MAGIC * rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - ry));
-
-    g_string_append (d, " C");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - RSVG_ARC_MAGIC * rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - rx));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy - RSVG_ARC_MAGIC * ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - rx));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy));
-
-    g_string_append (d, " C");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + RSVG_ARC_MAGIC * ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx - RSVG_ARC_MAGIC * rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + ry));
-
-    g_string_append (d, " C");
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + RSVG_ARC_MAGIC * rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy + RSVG_ARC_MAGIC * ry));
-    g_string_append_c (d, ' ');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cx + rx));
-    g_string_append_c (d, ',');
-    g_string_append (d, g_ascii_dtostr (buf, sizeof (buf), cy));
-
-    g_string_append (d, " Z");
+    rsvg_path_builder_init (&pathdata, 4);
+    rsvg_path_builder_move_to (&pathdata, cx + rx, cy,
+                               PATHSEG_MOVETO_ABS);
+    rsvg_path_builder_elliptical_arc (&pathdata, cx - rx, cy,
+                                      rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
+                                      PATHSEG_ARC_REL);
+    rsvg_path_builder_elliptical_arc (&pathdata, cx + rx, cy,
+                                      rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
+                                      PATHSEG_ARC_REL);
+    rsvg_path_builder_close_path (&pathdata, 0);
+    path = rsvg_path_builder_finish (pathdata);
 
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
-    path = rsvg_parse_path (d->str);
-    g_string_free (d, TRUE);
-
-    rsvg_render_path (ctx, path, FALSE);
-    rsvg_cairo_path_destroy (path);
+    rsvg_render_path (ctx, path);
+    rsvg_path_destroy (path);
 }
 
 RsvgNode *
@@ -773,4 +337,563 @@ rsvg_new_ellipse (void)
     ellipse->super.set_atts = _rsvg_node_ellipse_set_atts;
     ellipse->cx = ellipse->cy = ellipse->rx = ellipse->ry = _rsvg_css_parse_length ("0");
     return &ellipse->super;
+}
+
+struct _RsvgNodeLine {
+    RsvgNode super;
+    RsvgLength x1, x2, y1, y2;
+};
+
+typedef struct _RsvgNodeLine RsvgNodeLine;
+
+static void
+_rsvg_node_line_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
+{
+    const char *klazz = NULL, *id = NULL, *value;
+    RsvgNodeLine *line = (RsvgNodeLine *) self;
+
+    if (rsvg_property_bag_size (atts)) {
+        if ((value = rsvg_property_bag_lookup (atts, "x1")))
+            line->x1 = _rsvg_css_parse_length (value);
+        if ((value = rsvg_property_bag_lookup (atts, "y1")))
+            line->y1 = _rsvg_css_parse_length (value);
+        if ((value = rsvg_property_bag_lookup (atts, "x2")))
+            line->x2 = _rsvg_css_parse_length (value);
+        if ((value = rsvg_property_bag_lookup (atts, "y2")))
+            line->y2 = _rsvg_css_parse_length (value);
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
+            rsvg_defs_register_name (ctx->priv->defs, value, self);
+        }
+
+        rsvg_parse_style_attrs (ctx, self->state, "line", klazz, id, atts);
+    }
+}
+
+static void
+_rsvg_node_line_draw (RsvgNode * overself, RsvgDrawingCtx * ctx, int dominate)
+{
+    double x1, y1, x2, y2;
+    RsvgNodeLine *self = (RsvgNodeLine *) overself;
+    GArray *pathdata;
+    RSVGPathSegm * path;
+
+    x1 = _rsvg_css_normalize_length (&self->x1, ctx, 'h');
+    y1 = _rsvg_css_normalize_length (&self->y1, ctx, 'v');
+    x2 = _rsvg_css_normalize_length (&self->x2, ctx, 'h');
+    y2 = _rsvg_css_normalize_length (&self->y2, ctx, 'v');
+
+    rsvg_path_builder_init (&pathdata, 2);
+    rsvg_path_builder_move_to (&pathdata, x1, y1, PATHSEG_MOVETO_ABS);
+    rsvg_path_builder_line_to (&pathdata, x2, y2, PATHSEG_LINETO_ABS);
+    path = rsvg_path_builder_finish (pathdata);
+
+    rsvg_state_reinherit_top (ctx, overself->state, dominate);
+
+    rsvg_render_path (ctx, path);
+    rsvg_path_destroy (path);
+}
+
+RsvgNode *
+rsvg_new_line (void)
+{
+    RsvgNodeLine *line;
+    line = g_new (RsvgNodeLine, 1);
+    _rsvg_node_init (&line->super, RSVG_NODE_TYPE_LINE);
+    line->super.draw = _rsvg_node_line_draw;
+    line->super.set_atts = _rsvg_node_line_set_atts;
+    line->x1 = line->x2 = line->y1 = line->y2 = _rsvg_css_parse_length ("0");
+    return &line->super;
+}
+
+struct _RsvgNodePoly {
+    RsvgNode super;
+    RSVGPathSegm *path;
+};
+
+typedef struct _RsvgNodePoly RsvgNodePoly;
+
+static RSVGPathSegm *
+_rsvg_node_poly_build_path (const char *value,
+                            gboolean close_path);
+
+static void
+_rsvg_node_poly_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
+{
+    RsvgNodePoly *poly = (RsvgNodePoly *) self;
+    const char *klazz = NULL, *id = NULL, *value;
+
+    if (rsvg_property_bag_size (atts)) {
+        /* support for svg < 1.0 which used verts */
+        if ((value = rsvg_property_bag_lookup (atts, "verts"))
+            || (value = rsvg_property_bag_lookup (atts, "points"))) {
+            if (poly->path)
+                rsvg_path_destroy (poly->path);
+            poly->path = _rsvg_node_poly_build_path (value,
+                                                     RSVG_NODE_TYPE (self) == RSVG_NODE_TYPE_POLYGON);
+        }
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
+            rsvg_defs_register_name (ctx->priv->defs, value, self);
+        }
+
+        rsvg_parse_style_attrs (ctx, self->state,
+                                RSVG_NODE_TYPE (self) == RSVG_NODE_TYPE_POLYLINE ? "polyline" : "polygon",
+                                klazz, id, atts);
+    }
+
+}
+
+static RSVGPathSegm *
+_rsvg_node_poly_build_path (const char *data,
+                            gboolean close_path)
+{
+    int param;
+    double params[2];
+    gboolean first_cmd = TRUE;
+
+    GArray *path;
+
+    param = 0;
+
+    rsvg_path_builder_init (&path, 16);
+
+    while (*data != 0) {
+        switch (*data) {
+        case '.':
+            /* '.' must be followed by a number */
+            if (!(data[1] >= 0 && data[1] <= '9'))
+                goto exitloop;
+            /* fallthrough */
+        case '+': case '-':
+            /* '+' or '-' must be followed by a digit,
+               or by a '.' that is followed by a digit */
+            if (!((data[1] >= 0 && data[1] <= '9') ||
+                  (data[1] == '.' && !(data[2] >= 0 && data[2] <= '9'))))
+                goto exitloop;
+            /* fallthrough */
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9':
+            params[param] = g_ascii_strtod(data, (gchar **) &data);
+            param++;
+            if (param == 2) {
+                if (first_cmd) {
+                    rsvg_path_builder_move_to (&path, params[0], params[1],
+                                               PATHSEG_MOVETO_ABS);
+                    first_cmd = FALSE;
+                } else {
+                    rsvg_path_builder_line_to (&path, params[0], params[1],
+                                               PATHSEG_LINETO_ABS);
+                }
+                param = 0;
+            }
+            data -= 1;
+            break;
+        case ' ': case '\t': case '\r': case '\n': case ',':
+            break;
+        default: /* invalid character */
+            goto exitloop;
+        }
+        data++;
+    }
+exitloop:
+
+    if (close_path)
+        rsvg_path_builder_close_path (&path, 0);
+
+    return rsvg_path_builder_finish (path);
+}
+
+static void
+_rsvg_node_poly_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
+{
+    RsvgNodePoly *poly = (RsvgNodePoly *) self;
+
+    if (poly->path == NULL)
+        return;
+
+    rsvg_state_reinherit_top (ctx, self->state, dominate);
+
+    rsvg_render_path (ctx, poly->path);
+}
+
+static void
+_rsvg_node_poly_free (RsvgNode * self)
+{
+    RsvgNodePoly *poly = (RsvgNodePoly *) self;
+    if (poly->path)
+        rsvg_path_destroy (poly->path);
+    _rsvg_node_finalize (&poly->super);
+    g_free (poly);
+}
+
+static RsvgNode *
+rsvg_new_any_poly (RsvgNodeType type)
+{
+    RsvgNodePoly *poly;
+    poly = g_new (RsvgNodePoly, 1);
+    _rsvg_node_init (&poly->super, type);
+    poly->super.free = _rsvg_node_poly_free;
+    poly->super.draw = _rsvg_node_poly_draw;
+    poly->super.set_atts = _rsvg_node_poly_set_atts;
+    poly->path = NULL;
+    return &poly->super;
+}
+
+RsvgNode *
+rsvg_new_polyline (void)
+{
+    return rsvg_new_any_poly (RSVG_NODE_TYPE_POLYLINE);
+}
+
+RsvgNode *
+rsvg_new_polygon (void)
+{
+    return rsvg_new_any_poly (RSVG_NODE_TYPE_POLYGON);
+}
+
+typedef struct _RsvgNodePath RsvgNodePath;
+
+struct _RsvgNodePath {
+    RsvgNode super;
+    RSVGPathSegm *path;
+};
+
+typedef struct _RSVGParsePathCtx RSVGParsePathCtx;
+
+struct _RSVGParsePathCtx {
+    GArray *path;
+    double x, y;               /* current point */
+    double rpx, rpy;           /* reflection point (for 'S' and 'T' commands) */
+    char lastcmd;              /* previous command (uppercase) */
+    gboolean rel;              /* true if relative coords */
+    int param;                 /* parameter number */
+    double params[7];          /* parameters that have been parsed */
+    guint subpath_start_index; /* array index of previous moveto or closepath */
+};
+
+static RSVGPathSegm *
+_rsvg_node_path_build_path (const char *data);
+
+static void
+rsvg_node_path_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
+{
+    const char *klazz = NULL, *id = NULL, *value;
+    RsvgNodePath *path = (RsvgNodePath *) self;
+
+    if (rsvg_property_bag_size (atts)) {
+        if ((value = rsvg_property_bag_lookup (atts, "d"))) {
+            if (path->path)
+                rsvg_path_destroy (path->path);
+            path->path = _rsvg_node_path_build_path (value);
+        }
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
+            rsvg_defs_register_name (ctx->priv->defs, value, self);
+        }
+
+        rsvg_parse_style_attrs (ctx, self->state, "path", klazz, id, atts);
+    }
+}
+
+static void
+rsvg_parse_path_do_cmd (RSVGParsePathCtx * ctx, char cmd)
+{
+    double curx, cury; /* current start point */
+    double x, y; /* end point of command */
+    double x1, y1, x2, y2; /* Bezier curve control points */
+    double rx, ry, x_axis_rotation; /* elliptical arc parameters */
+    guint flags;
+    RSVGPathSegm *prev_moveto;
+
+    curx = ctx->x;
+    cury = ctx->y;
+
+    if (ctx->rel) {
+        x = curx;
+        y = cury;
+    } else {
+        x = 0.;
+        y = 0.;
+    }
+
+    switch (cmd) {
+    case 'M':
+        x += ctx->params[0];
+        y += ctx->params[1];
+        ctx->subpath_start_index = rsvg_path_builder_move_to (&ctx->path, x, y,
+                                                              ctx->rel? PATHSEG_MOVETO_REL
+                                                                      : PATHSEG_MOVETO_ABS);
+        break;
+    case 'L':
+        x += ctx->params[0];
+        y += ctx->params[1];
+        rsvg_path_builder_line_to (&ctx->path, x, y,
+                                   ctx->rel? PATHSEG_LINETO_REL
+                                           : PATHSEG_LINETO_ABS);
+        break;
+    case 'H':
+        x += ctx->params[0];
+        y = cury;
+        rsvg_path_builder_line_to (&ctx->path, x, y,
+                                   ctx->rel? PATHSEG_LINETO_HORIZONTAL_REL
+                                           : PATHSEG_LINETO_HORIZONTAL_ABS);
+        break;
+    case 'V':
+        x = curx;
+        y += ctx->params[0];
+        rsvg_path_builder_line_to (&ctx->path, x, y,
+                                   ctx->rel? PATHSEG_LINETO_VERTICAL_REL
+                                           : PATHSEG_LINETO_VERTICAL_ABS);
+        break;
+    case 'C':
+        x1 = x + ctx->params[0];
+        y1 = y + ctx->params[1];
+        x2 = ctx->rpx = x + ctx->params[2];
+        y2 = ctx->rpy = y + ctx->params[3];
+        x += ctx->params[4];
+        y += ctx->params[5];
+        rsvg_path_builder_cubic_curve_to (&ctx->path, x, y, x1, y1, x2, y2,
+                                          ctx->rel? PATHSEG_CURVETO_CUBIC_REL
+                                                  : PATHSEG_CURVETO_CUBIC_ABS);
+        break;
+    case 'S':
+        if (ctx->lastcmd == 'C' || ctx->lastcmd == 'S') {
+            x1 = 2 * curx - ctx->rpx;
+            y1 = 2 * cury - ctx->rpy;
+        } else {
+            x1 = curx;
+            y1 = cury;
+        }
+        x2 = ctx->rpx = x + ctx->params[0];
+        y2 = ctx->rpy = y + ctx->params[1];
+        x += ctx->params[2];
+        y += ctx->params[3];
+        rsvg_path_builder_cubic_curve_to (&ctx->path, x, y, x1, y1, x2, y2,
+                                          ctx->rel? PATHSEG_CURVETO_CUBIC_SMOOTH_REL
+                                                  : PATHSEG_CURVETO_CUBIC_SMOOTH_ABS);
+        break;
+    case 'Q':
+        x1 = ctx->rpx = x + ctx->params[0];
+        y1 = ctx->rpy = y + ctx->params[1];
+        x += ctx->params[2];
+        y += ctx->params[3];
+        rsvg_path_builder_quadratic_curve_to (&ctx->path, x, y, x1, y1,
+                                              ctx->rel? PATHSEG_CURVETO_QUADRATIC_REL
+                                                      : PATHSEG_CURVETO_QUADRATIC_ABS);
+        break;
+    case 'T':
+        if (ctx->lastcmd == 'Q' || ctx->lastcmd == 'T') {
+            x1 = ctx->rpx = 2 * curx - ctx->rpx;
+            y1 = ctx->rpy = 2 * cury - ctx->rpy;
+        } else {
+            x1 = ctx->rpx = curx;
+            y1 = ctx->rpy = cury;
+        }
+        x += ctx->params[0];
+        y += ctx->params[1];
+        rsvg_path_builder_quadratic_curve_to (&ctx->path, x, y, x1, y1,
+                                              ctx->rel? PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL
+                                                      : PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS);
+        break;
+    case 'A':
+        rx = ctx->params[0];
+        ry = ctx->params[1];
+        x_axis_rotation = ctx->params[2];
+        x += ctx->params[5];
+        y += ctx->params[6];
+
+        flags = 0;
+        if (ctx->params[3])
+            flags |= RSVG_ARC_FLAG_LARGEARC;
+        if (ctx->params[4])
+            flags |= RSVG_ARC_FLAG_SWEEP;
+
+        rsvg_path_builder_elliptical_arc (&ctx->path, x, y, rx, ry,
+                                          x_axis_rotation, flags,
+                                          ctx->rel? PATHSEG_ARC_REL
+                                                  : PATHSEG_ARC_ABS);
+        break;
+    case 'Z':
+        /* set x and y to that of the previous moveto */
+        prev_moveto = &g_array_index (ctx->path, RSVGPathSegm, ctx->subpath_start_index);
+        x = prev_moveto->x;
+        y = prev_moveto->y;
+
+        ctx->subpath_start_index = rsvg_path_builder_close_path (&ctx->path, ctx->subpath_start_index);
+    }
+
+    ctx->x = x;
+    ctx->y = y;
+    ctx->param = 0;
+    ctx->lastcmd = cmd;
+}
+
+static RSVGPathSegm *
+_rsvg_node_path_build_path (const char *data)
+{
+    RSVGParsePathCtx ctx;
+    char cmd;
+
+    rsvg_path_builder_init (&ctx.path, 16);
+
+    cmd = ctx.lastcmd = 0;
+    ctx.param = 0;
+    ctx.x = ctx.y = 0.;
+
+    while (*data != 0) {
+        switch (*data) {
+        case '.':
+            /* '.' must be followed by a number */
+            if (!(data[1] >= 0 && data[1] <= '9'))
+                goto exitloop;
+            /* fallthrough */
+        case '+': case '-':
+            /* '+' or '-' must be followed by a digit,
+               or by a '.' that is followed by a digit */
+            if (!((data[1] >= 0 && data[1] <= '9') ||
+                  (data[1] == '.' && !(data[2] >= 0 && data[2] <= '9'))))
+                goto exitloop;
+            /* fallthrough */
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9':
+            if (cmd == 'A' && (ctx.param == 3 || ctx.param == 4)) {
+                if (*data != '0' && *data != '1')
+                    goto exitloop;
+                ctx.params[ctx.param] = *data - '0';
+            } else {
+                ctx.params[ctx.param] = g_ascii_strtod(data, (gchar **) &data);
+                data -= 1;
+                /* strtod also parses infinity and nan, which are not valid */
+                if (!isfinite (ctx.params[ctx.param]))
+                    goto exitloop;
+            }
+            ctx.param++;
+
+            switch (cmd) {
+            case 'M':
+                if (ctx.param == 2) {
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                    cmd = 'L'; /* implicit lineto after a moveto */
+                }
+                break;
+            case 'L':
+                if (ctx.param == 2)
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                break;
+            case 'H':
+                if (ctx.param == 1)
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                break;
+            case 'V':
+                if (ctx.param == 1)
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                break;
+            case 'C':
+                if (ctx.param == 6)
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                break;
+            case 'S':
+                if (ctx.param == 4)
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                break;
+            case 'Q':
+                if (ctx.param == 4)
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                break;
+            case 'T':
+                if (ctx.param == 2)
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                break;
+            case 'A':
+                if (ctx.param == 7) {
+                    /* arc is invalid if rx or ry < 0 */
+                    if (ctx.params[0] < 0. || ctx.params[1] < 0.)
+                        goto exitloop;
+                    rsvg_parse_path_do_cmd (&ctx, cmd);
+                }
+                break;
+            default:
+                goto exitloop;
+            }
+            break;
+        case 'L': case 'C': case 'S': case 'H': case 'V': case 'Q': case 'T': case 'A':
+            if (cmd == 0) /* only a moveto is accepted as the first command of path data */
+                goto exitloop;
+            /* fallthrough */
+        case 'M':
+            if (ctx.param != 0)
+                goto exitloop;
+            cmd = *data;
+            ctx.rel = FALSE;
+            break;
+        case 'l': case 'c': case 's': case 'h': case 'v': case 'q': case 't': case 'a':
+            if (cmd == 0) /* only a moveto is accepted as the first command of path data */
+                goto exitloop;
+            /* fallthrough */
+        case 'm':
+            if (ctx.param != 0)
+                goto exitloop;
+            cmd = *data - 'a' + 'A';
+            ctx.rel = TRUE;
+            break;
+        case 'Z': case 'z':
+            if (ctx.param != 0 || cmd == 0)
+                goto exitloop;
+            cmd = 'Z';
+            rsvg_parse_path_do_cmd (&ctx, cmd);
+            break;
+        case ' ': case '\t': case '\r': case '\n': case ',':
+            break;
+        default: /* invalid character */
+            goto exitloop;
+        }
+        data++;
+    }
+exitloop:
+
+    return rsvg_path_builder_finish (ctx.path);
+}
+
+static void
+rsvg_node_path_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
+{
+    RsvgNodePath *path = (RsvgNodePath *) self;
+
+    if (path->path == NULL)
+        return;
+
+    rsvg_state_reinherit_top (ctx, self->state, dominate);
+
+    rsvg_render_path (ctx, path->path);
+}
+
+static void
+rsvg_node_path_free (RsvgNode * self)
+{
+    RsvgNodePath *path = (RsvgNodePath *) self;
+    if (path->path)
+        rsvg_path_destroy (path->path);
+    _rsvg_node_finalize (&path->super);
+    g_free (path);
+}
+
+RsvgNode *
+rsvg_new_path (void)
+{
+    RsvgNodePath *path;
+    path = g_new (RsvgNodePath, 1);
+    _rsvg_node_init (&path->super, RSVG_NODE_TYPE_PATH);
+    path->path = NULL;
+    path->super.free = rsvg_node_path_free;
+    path->super.draw = rsvg_node_path_draw;
+    path->super.set_atts = rsvg_node_path_set_atts;
+
+    return &path->super;
 }

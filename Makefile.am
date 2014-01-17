@@ -56,6 +56,8 @@ librsvg_@RSVG_API_MAJOR_VERSION@_la_SOURCES = \
 	librsvg-enum-types.c	\
 	rsvg-cairo-draw.c	\
 	rsvg-cairo-draw.h	\
+	rsvg-cairo-path.c	\
+	rsvg-cairo-path.h	\
 	rsvg-cairo-render.c	\
 	rsvg-cairo-render.h	\
 	rsvg-cairo-clip.h	\
