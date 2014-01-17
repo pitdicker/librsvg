@@ -300,3 +300,284 @@ rsvg_path_arc_center_para (const RSVGPathSegm arc,
 
     return TRUE;
 }
+
+gboolean
+rsvg_path_segm_has_dir (const RSVGPathSegm *const segm,
+                        const double prevx,
+                        const double prevy)
+{
+    switch (segm->type) {
+    case PATHSEG_MOVETO_ABS:
+    case PATHSEG_MOVETO_REL:
+    case PATHSEG_LINETO_ABS:
+    case PATHSEG_LINETO_REL:
+    case PATHSEG_LINETO_HORIZONTAL_ABS:
+    case PATHSEG_LINETO_HORIZONTAL_REL:
+    case PATHSEG_LINETO_VERTICAL_ABS:
+    case PATHSEG_LINETO_VERTICAL_REL:
+    case PATHSEG_ARC_ABS:
+    case PATHSEG_ARC_REL:
+    case PATHSEG_CLOSEPATH:
+        if (rsvg_path_points_not_equal (prevx, prevy, segm->x, segm->y))
+            return TRUE;
+        else
+            return FALSE;
+        break;
+    case PATHSEG_CURVETO_CUBIC_ABS:
+    case PATHSEG_CURVETO_CUBIC_REL:
+    case PATHSEG_CURVETO_CUBIC_SMOOTH_ABS:
+    case PATHSEG_CURVETO_CUBIC_SMOOTH_REL:
+        if (rsvg_path_points_not_equal (prevx, prevy, segm->x, segm->y) ||
+            rsvg_path_points_not_equal (prevx, prevy,
+                                        segm->att.c.x1, segm->att.c.x2) ||
+            rsvg_path_points_not_equal (prevx, prevy,
+                                        segm->att.c.x2, segm->att.c.x2) )
+            return TRUE;
+        else
+            return FALSE;
+        break;
+    case PATHSEG_CURVETO_QUADRATIC_ABS:
+    case PATHSEG_CURVETO_QUADRATIC_REL:
+    case PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS:
+    case PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL:
+        if (rsvg_path_points_not_equal (prevx, prevy, segm->x, segm->y) ||
+            rsvg_path_points_not_equal (prevx, prevy,
+                                        segm->att.c.x1, segm->att.c.x2) )
+            return TRUE;
+        else
+            return FALSE;
+        break;
+    case PATHSEG_UNKNOWN:
+    default:
+        return FALSE; /* should never occur */
+    }
+}
+
+void
+rsvg_path_get_segm_dir (const RSVGPathSegm *const path,
+                        guint i,
+                        double *startdirx,
+                        double *startdiry,
+                        double *enddirx,
+                        double *enddiry)
+{
+    double x1, y1, x2, y2; /* curve_to control points */
+    double rx, ry, cx, cy, th1, th2, delta_theta; /* arc parameters */
+
+    double sinf, cosf; /* elliptical arc helper variables */
+
+    /* for the direction searching algorithm */
+    gboolean has_dir;
+    double tempdirx, tempdiry;
+    guint j, number_of_items;
+
+    double tot;
+
+    /* TODO: assert (i != 0) */
+
+    switch (path[i].type) {
+    case PATHSEG_MOVETO_ABS:
+    case PATHSEG_MOVETO_REL:
+    case PATHSEG_LINETO_ABS:
+    case PATHSEG_LINETO_REL:
+    case PATHSEG_LINETO_HORIZONTAL_ABS:
+    case PATHSEG_LINETO_HORIZONTAL_REL:
+    case PATHSEG_LINETO_VERTICAL_ABS:
+    case PATHSEG_LINETO_VERTICAL_REL:
+    case PATHSEG_CLOSEPATH:
+        if (!rsvg_path_points_not_equal (path[i].x, path[i].y,
+                                         path[i - 1].x, path[i - 1].y)) {
+            has_dir = FALSE;
+        } else {
+            *startdirx = *enddirx = path[i].x - path[i - 1].x;
+            *startdiry = *enddiry = path[i].y - path[i - 1].y;
+            has_dir = TRUE;
+        }
+        break;
+    case PATHSEG_CURVETO_CUBIC_ABS:
+    case PATHSEG_CURVETO_CUBIC_REL:
+    case PATHSEG_CURVETO_CUBIC_SMOOTH_ABS:
+    case PATHSEG_CURVETO_CUBIC_SMOOTH_REL:
+        x1 = path[i].att.c.x1;
+        y1 = path[i].att.c.y1;
+        x2 = path[i].att.c.x2;
+        y2 = path[i].att.c.y2;
+
+        has_dir = TRUE;
+        if (rsvg_path_points_not_equal (path[i - 1].x, path[i - 1].y,
+                                        x1, y1)) {
+            *startdirx = x1 - path[i - 1].x;
+            *startdiry = y1 - path[i - 1].y;
+        } else if (rsvg_path_points_not_equal (path[i - 1].x, path[i - 1].y,
+                                               x2, y2)) {
+            *startdirx = x2 - path[i - 1].x;
+            *startdiry = y2 - path[i - 1].y;
+        } else if (rsvg_path_points_not_equal (path[i - 1].x, path[i - 1].y,
+                                               path[i].x, path[i].y)) {
+            *startdirx = path[i].x - path[i - 1].x;
+            *startdiry = path[i].y - path[i - 1].y;
+        } else {
+            has_dir = FALSE;
+            break;
+        }
+
+        if (rsvg_path_points_not_equal (x2, y2,
+                                        path[i].x, path[i].y)) {
+            *enddirx = path[i].x - x2;
+            *enddiry = path[i].y - y2;
+        } else if (rsvg_path_points_not_equal (x1, y1,
+                                               path[i].x, path[i].y)) {
+            *enddirx = path[i].x - x1;
+            *enddiry = path[i].y - y1;
+        } else if (rsvg_path_points_not_equal (path[i - 1].x, path[i - 1].y,
+                                               path[i].x, path[i].y)) {
+            *enddirx = path[i].x - path[i - 1].x;
+            *enddiry = path[i].y - path[i - 1].y;
+        }
+        break;
+    case PATHSEG_CURVETO_QUADRATIC_ABS:
+    case PATHSEG_CURVETO_QUADRATIC_REL:
+    case PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS:
+    case PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL:
+        x1 = path[i].att.c.x1;
+        y1 = path[i].att.c.y1;
+
+        has_dir = TRUE;
+        if (rsvg_path_points_not_equal (path[i - 1].x, path[i - 1].y,
+                                        x1, y1)) {
+            *startdirx = x1 - path[i - 1].x;
+            *startdiry = y1 - path[i - 1].y;
+        } else if (rsvg_path_points_not_equal (path[i - 1].x, path[i - 1].y,
+                                               path[i].x, path[i].y)) {
+            *startdirx = path[i].x - path[i - 1].x;
+            *startdiry = path[i].y - path[i - 1].y;
+        } else {
+            has_dir = FALSE;
+            break;
+        }
+
+        if (rsvg_path_points_not_equal (x1, y1,
+                                        path[i].x, path[i].y)) {
+            *enddirx = path[i].x - x1;
+            *enddiry = path[i].y - y1;
+        } else if (rsvg_path_points_not_equal (path[i - 1].x, path[i - 1].y,
+                                               path[i].x, path[i].y)) {
+            *enddirx = path[i].x - path[i - 1].x;
+            *enddiry = path[i].y - path[i - 1].y;
+        }
+        break;
+    case PATHSEG_ARC_ABS:
+    case PATHSEG_ARC_REL:
+        if (!rsvg_path_points_not_equal (path[i].x, path[i].y,
+                                         path[i - 1].x, path[i - 1].y)) {
+            has_dir = FALSE;
+        } else if (rsvg_path_arc_center_para (path[i], path[i - 1].x, path[i - 1].y,
+                                              &cx, &cy, &rx, &ry,
+                                              &th1, &th2, &delta_theta)) {
+            x1 = rx * sin (th1);
+            y1 = ry * -cos (th1);
+            x2 = rx * sin (th2);
+            y2 = ry * -cos (th2);
+            if (path[i].att.a.flags & RSVG_ARC_FLAG_SWEEP) {
+                x1 = -x1;
+                y1 = -y1;
+                x2 = -x2;
+                y2 = -y2;
+            }
+
+            sinf = sin (path[i].att.a.angle * M_PI / 180.);
+            cosf = cos (path[i].att.a.angle * M_PI / 180.);
+            *startdirx = cosf * x1 - sinf * y1;
+            *startdiry = sinf * x1 + cosf * y1;
+            *enddirx = cosf * x2 - sinf * y2;
+            *enddiry = sinf * x2 + cosf * y2;
+            has_dir = TRUE;
+        } else {
+            *startdirx = *enddirx = path[i].x - path[i - 1].x;
+            *startdiry = *enddiry = path[i].y - path[i - 1].y;
+            has_dir = TRUE;
+        }
+        break;
+    case PATHSEG_UNKNOWN:
+    default:
+        ; /* should never occur */
+    }
+
+    if (has_dir == FALSE) {
+        /* Algorithm to establish directionality for zero-length path segments,
+           see http://www.w3.org/TR/SVG11/implnote.html#PathElementImplementationNotes */
+        *startdirx = *startdiry = 0.;
+        *enddirx = *enddiry = 0.;
+        number_of_items = path[0].att.path.number_of_items;
+
+        /* starting direction is the ending direction of the previous segment
+           with non-zero length (within this subpath, if any) */
+        for (j = i - 1; j != i; j--) {
+            if (path[j].type == PATHSEG_MOVETO_ABS ||
+                path[j].type == PATHSEG_MOVETO_REL ||
+                path[j].type == PATHSEG_CLOSEPATH) {
+                /* Reached start of the current subpath. If it is closed,
+                   continue from the end of the subpath. If it is open, try to
+                   take the direction from the incoming moveto */
+                if (path[j].att.subpath.next_length != 0) {
+                    j += path[j].att.subpath.next_length + 1;
+                    /* + 1 because the for loop substracts 1 */
+                } else {
+                    if (j > 0 && rsvg_path_segm_has_dir (&path[j],
+                                                         path[j - 1].x,
+                                                         path[j - 1].y) ) {
+                        rsvg_path_get_segm_dir (path, j, &tempdirx, &tempdiry,
+                                                startdirx, startdiry);
+                    }
+                    break;
+                }
+            } else if (rsvg_path_segm_has_dir (&path[j], path[j - 1].x,
+                                               path[j - 1].y)) {
+                rsvg_path_get_segm_dir (path, j, &tempdirx, &tempdiry,
+                                        startdirx, startdiry);
+                break;
+            }
+        }
+
+        /* ending direction is the starting direction of the next segment
+           with non-zero length (within this subpath, if any) */
+        for (j = i + 1; j < number_of_items && j != i; j++) {
+            if (rsvg_path_segm_has_dir (&path[j], path[j - 1].x, path[j - 1].y)) {
+                rsvg_path_get_segm_dir (path, j, enddirx, enddiry,
+                                        &tempdirx, &tempdiry);
+                break;
+            }
+            if (path[j].type == PATHSEG_CLOSEPATH) {
+                /* continue from the start of the subpath (length - 1) */
+                j -= path[j].att.subpath.prev_length - 2;
+                /* - 1 extra because the for loop adds 1 */
+            } else if (path[j].type == PATHSEG_MOVETO_ABS ||
+                       path[j].type == PATHSEG_MOVETO_REL) {
+                /* reached start of the current subpath */
+                break;
+            }
+        }
+
+        if (*enddirx == 0. && *enddiry == 0.) {
+            if (*startdirx == 0. && *startdiry == 0.) {
+                *enddirx = *startdirx = 1.;
+                *enddiry = *startdiry = 0.;
+            } else {
+                *enddirx = *startdirx;
+                *enddiry = *startdiry;
+            }
+        }
+        if (*startdirx == 0. && *startdiry == 0.) {
+            *startdirx = *enddirx;
+            *startdiry = *enddiry;
+        }
+    } else {
+        tot = sqrt (*startdirx * *startdirx + *startdiry * *startdiry);
+        *startdirx /= tot;
+        *startdiry /= tot;
+
+        tot = sqrt (*enddirx * *enddirx + *enddiry * *enddiry);
+        *enddirx /= tot;
+        *enddiry /= tot;
+    }
+}

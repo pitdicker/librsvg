@@ -109,6 +109,17 @@ gboolean rsvg_path_arc_center_para (RSVGPathSegm arc,
                                     double *th1,
                                     double *th2,
                                     double *delta_theta);
+G_GNUC_INTERNAL
+gboolean rsvg_path_segm_has_dir (const RSVGPathSegm *const segm,
+                                 const double prevx,
+                                 const double prevy);
+G_GNUC_INTERNAL
+void rsvg_path_get_segm_dir (const RSVGPathSegm *const path,
+                             guint i,
+                             double *startdirx,
+                             double *startdiry,
+                             double *enddirx,
+                             double *enddiry);
 G_END_DECLS
 
 #endif /* RSVG_PATH_H */
