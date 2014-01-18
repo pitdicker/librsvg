@@ -223,14 +223,14 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
             }
 
             /* X-axis */
-            sinf = sin (path[i].att.a.angle * M_PI / 180.);
-            cosf = cos (path[i].att.a.angle * M_PI / 180.);
+            sinf = sin (path[i].att.a.angle);
+            cosf = cos (path[i].att.a.angle);
 
             /* calculate the number of bezier curves neccesary to approximate
                the arc, depending on it's average radius (including
                transformations) and included angle */
             raffine = affine;
-            cairo_matrix_rotate (&raffine, path[i].att.a.angle * M_PI / 180.);
+            cairo_matrix_rotate (&raffine, path[i].att.a.angle);
             x1 = raffine.xx * rx + raffine.xy * ry;
             y1 = raffine.yx * rx + raffine.yy * ry;
             n_segs = ceil (sqrt(x1 * x1 + y1 * y1) / fabs (delta_theta)

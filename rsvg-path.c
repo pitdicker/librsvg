@@ -128,7 +128,7 @@ rsvg_path_builder_elliptical_arc (GArray **path,
     segm.y = y;
     segm.att.a.r1 = r1;
     segm.att.a.r2 = r2;
-    segm.att.a.angle = angle;
+    segm.att.a.angle = angle * M_PI / 180.;
     segm.att.a.flags = flags;
     g_array_append_val (*path, segm);
 }
@@ -219,7 +219,7 @@ rsvg_path_arc_center_para (const RSVGPathSegm arc,
     y = arc.y;
     *rx = arc.att.a.r1;
     *ry = arc.att.a.r2;
-    x_axis_rotation = arc.att.a.angle * M_PI / 180.;
+    x_axis_rotation = arc.att.a.angle;
     large_arc = (arc.att.a.flags & RSVG_ARC_FLAG_LARGEARC)? TRUE : FALSE;
     sweep = (arc.att.a.flags & RSVG_ARC_FLAG_SWEEP)? TRUE : FALSE;
 
@@ -485,8 +485,8 @@ rsvg_path_get_segm_dir (const RSVGPathSegm *const path,
                 y2 = -y2;
             }
 
-            sinf = sin (path[i].att.a.angle * M_PI / 180.);
-            cosf = cos (path[i].att.a.angle * M_PI / 180.);
+            sinf = sin (path[i].att.a.angle);
+            cosf = cos (path[i].att.a.angle);
             *startdirx = cosf * x1 - sinf * y1;
             *startdiry = sinf * x1 + cosf * y1;
             *enddirx = cosf * x2 - sinf * y2;
