@@ -482,7 +482,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
     cairo_set_dash (cr, state->dash.dash, state->dash.n_dash,
                     _rsvg_css_normalize_length (&state->dash.offset, ctx, 'o'));
 
-    path = rsvg_cairo_build_path (rsvg_path);
+    path = rsvg_cairo_build_path (rsvg_path, state->affine);
     cairo_append_path (cr, path);
     rsvg_cairo_path_destroy (path);
 

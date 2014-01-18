@@ -36,8 +36,9 @@
 #include "rsvg-private.h"
 #include "rsvg-path.h"
 
-/* number of cubic bezier curves that are used to approximate a full circle */
-#define NR_ARC_APPROX_CURVES 4
+/* fraction of pixels to which the approximation of an arc by bezier curves
+   should be accurate */
+#define ARC_MAX_ERROR .2
 
 static inline void
 rsvg_cairo_path_builder_ensure_capacity (GArray **cairopath,
@@ -151,7 +152,7 @@ rsvg_cairo_path_builder_finish (GArray *cairopath)
 }
 
 cairo_path_t *
-rsvg_cairo_build_path (const RSVGPathSegm *const path)
+rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
 {
     GArray *cairopath;
 
@@ -159,7 +160,11 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path)
     double x, y, prevx, prevy;
     double x1, y1, x2, y2, x3, y3, xc, yc; /* curve control points */
     double rx, ry, cx, cy, th1, th2, delta_theta; /* elliptical arc parameters */
-    double sinf, cosf, n, n_segs, th, t; /* elliptical arc helper variables */
+
+    /* elliptical arc helper variables */
+    double sinf, cosf, th, t;
+    guint n, n_segs;
+    cairo_matrix_t raffine;
 
     rsvg_cairo_path_builder_init (&cairopath, 32);
 
@@ -221,11 +226,21 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path)
             sinf = sin (path[i].att.a.angle * M_PI / 180.);
             cosf = cos (path[i].att.a.angle * M_PI / 180.);
 
-            /* Cut arc into segments and approximate with cubic bezier curves */
-            n_segs = ceil (fabs (delta_theta) / ((2. * M_PI / NR_ARC_APPROX_CURVES)) - 0.001);
+            /* calculate the number of bezier curves neccesary to approximate
+               the arc, depending on it's average radius (including
+               transformations) and included angle */
+            raffine = affine;
+            cairo_matrix_rotate (&raffine, path[i].att.a.angle * M_PI / 180.);
+            x1 = raffine.xx * rx + raffine.xy * ry;
+            y1 = raffine.yx * rx + raffine.yy * ry;
+            n_segs = ceil (sqrt(x1 * x1 + y1 * y1) / fabs (delta_theta)
+                           * .001231984794614557 / ARC_MAX_ERROR);
+            if (n_segs < ceil (2. * fabs (delta_theta) / M_PI - 0.001))
+                n_segs = ceil (2. * fabs (delta_theta) / M_PI - 0.001);
+
+            /* Calculate control points of cubic bezier curves */
             th = delta_theta / n_segs;
             t = 1.332440737409712 * (1. - cos (th * 0.5)) / sin (th * 0.5);
-
             for (n = 0; n < n_segs; n++) {
                 th2 = th1 + th;
                 x1 = rx * (cos (th1) - t * sin (th1));
