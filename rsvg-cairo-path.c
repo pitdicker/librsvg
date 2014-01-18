@@ -151,7 +151,7 @@ rsvg_cairo_path_builder_finish (GArray *cairopath)
 }
 
 cairo_path_t *
-rsvg_build_cairo_path (const RSVGPathSegm *const path)
+rsvg_cairo_build_path (const RSVGPathSegm *const path)
 {
     GArray *cairopath;
 
@@ -245,7 +245,6 @@ rsvg_build_cairo_path (const RSVGPathSegm *const path)
             }
             break;
         case PATHSEG_CLOSEPATH:
-//            printf("CLOSEPATH\n");
             rsvg_cairo_path_builder_close_path (&cairopath);
             break;
         case PATHSEG_UNKNOWN:

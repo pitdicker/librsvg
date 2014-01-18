@@ -53,6 +53,7 @@ typedef struct _RsvgDefs RsvgDefs;
 typedef struct _RsvgNode RsvgNode;
 typedef struct _RsvgFilter RsvgFilter;
 typedef struct _RsvgNodeChars RsvgNodeChars;
+typedef struct _RSVGPathSegm RSVGPathSegm;
 
 /* prepare for gettext */
 #ifndef _
@@ -221,7 +222,7 @@ struct RsvgRender {
     PangoContext    *(*create_pango_context)    (RsvgDrawingCtx * ctx);
     void             (*render_pango_layout)     (RsvgDrawingCtx * ctx, PangoLayout *layout,
                                                  double x, double y);
-    void             (*render_path)             (RsvgDrawingCtx * ctx, const cairo_path_t *path);
+    void             (*render_path)             (RsvgDrawingCtx * ctx, const RSVGPathSegm *path);
     void             (*render_surface)          (RsvgDrawingCtx * ctx, cairo_surface_t *surface,
                                                  double x, double y, double w, double h);
     void             (*pop_discrete_layer)      (RsvgDrawingCtx * ctx);
@@ -357,7 +358,7 @@ typedef enum {
 #define RSVG_ARC_FLAG_LARGEARC (1 << 0)
 #define RSVG_ARC_FLAG_SWEEP    (1 << 1)
 
-typedef struct {
+struct _RSVGPathSegm {
     RsvgPathSegmentType type;
     double x, y;
     union {
@@ -384,7 +385,7 @@ typedef struct {
             guint flags;
         } a;
     } att;
-} RSVGPathSegm;
+};
 
 typedef void (*RsvgPropertyBagEnumFunc) (const char *key, const char *value, gpointer user_data);
 

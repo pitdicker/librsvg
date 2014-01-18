@@ -1974,10 +1974,7 @@ rsvg_push_discrete_layer (RsvgDrawingCtx * ctx)
 void
 rsvg_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
 {
-    cairo_path_t *cairopath;
-    cairopath = rsvg_build_cairo_path (path);
-    ctx->render->render_path (ctx, cairopath);
-    rsvg_cairo_path_destroy (cairopath);
+    ctx->render->render_path (ctx, path);
 }
 
 void

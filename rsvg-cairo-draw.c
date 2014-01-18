@@ -28,6 +28,7 @@
 */
 
 #include "rsvg-cairo-draw.h"
+#include "rsvg-cairo-path.h"
 #include "rsvg-cairo-render.h"
 #include "rsvg-cairo-clip.h"
 #include "rsvg-styles.h"
@@ -448,10 +449,11 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
 }
 
 void
-rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const cairo_path_t *path)
+rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
 {
     RsvgCairoRender *render = RSVG_CAIRO_RENDER (ctx->render);
     RsvgState *state = rsvg_current_state (ctx);
+    cairo_path_t *path;
     cairo_t *cr;
     int need_tmpbuf = 0;
     RsvgBbox bbox;
@@ -480,7 +482,9 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const cairo_path_t *path)
     cairo_set_dash (cr, state->dash.dash, state->dash.n_dash,
                     _rsvg_css_normalize_length (&state->dash.offset, ctx, 'o'));
 
+    path = rsvg_cairo_build_path (rsvg_path);
     cairo_append_path (cr, path);
+    rsvg_cairo_path_destroy (path);
 
     rsvg_bbox_init (&bbox, &state->affine);
 
