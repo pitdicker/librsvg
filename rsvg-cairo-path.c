@@ -38,7 +38,7 @@
 
 /* fraction of pixels to which the approximation of an arc by bezier curves
    should be accurate */
-#define ARC_MAX_ERROR .2
+#define ARC_MAX_ERROR .25
 
 static inline void
 rsvg_cairo_path_builder_ensure_capacity (GArray **cairopath,
@@ -233,10 +233,11 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
             cairo_matrix_rotate (&raffine, path[i].att.a.angle);
             x1 = raffine.xx * rx + raffine.xy * ry;
             y1 = raffine.yx * rx + raffine.yy * ry;
-            n_segs = ceil (sqrt(x1 * x1 + y1 * y1) / fabs (delta_theta)
+            n_segs = ceil (sqrt (x1 * x1 + y1 * y1)
+                           * 8 * M_PI / fabs (delta_theta)
                            * .001231984794614557 / ARC_MAX_ERROR);
-            if (n_segs < ceil (2. * fabs (delta_theta) / M_PI - 0.001))
-                n_segs = ceil (2. * fabs (delta_theta) / M_PI - 0.001);
+            if (n_segs < ceil (fabs (delta_theta) / (M_PI * 2. / 3.) - 0.001))
+                n_segs = ceil (fabs (delta_theta) / (M_PI * 2. / 3.) - 0.001);
 
             /* Calculate control points of cubic bezier curves */
             th = delta_theta / n_segs;
