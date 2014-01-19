@@ -223,6 +223,15 @@ rsvg_path_arc_center_para (const RSVGPathSegm arc,
     large_arc = (arc.att.a.flags & RSVG_ARC_FLAG_LARGEARC)? TRUE : FALSE;
     sweep = (arc.att.a.flags & RSVG_ARC_FLAG_SWEEP)? TRUE : FALSE;
 
+    /* Special case to handle a full circle or ellipse */
+    if (arc.att.a.flags & RSVG_ARC_FLAG_FULL_ELLIPSE) {
+        *cx = x;
+        *cy = y + *ry;
+        *th1 = *th2 = 3. / 2. * M_PI;
+        *delta_theta = 2. * M_PI;
+        return TRUE;
+    }
+
     /* Omit the arc entirely if the endpoints are the same */
     if (!rsvg_path_points_not_equal (prevx, prevy, x, y))
         return FALSE;

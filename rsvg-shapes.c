@@ -228,13 +228,10 @@ _rsvg_node_circle_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
         return; /* TODO: the whole document should stop rendering at this point */
 
     rsvg_path_builder_init (&pathdata, 4);
-    rsvg_path_builder_move_to (&pathdata, cx + r, cy,
+    rsvg_path_builder_move_to (&pathdata, cx, cy - r,
                                PATHSEG_MOVETO_ABS);
-    rsvg_path_builder_elliptical_arc (&pathdata, cx - r, cy,
-                                      r, r, 0., RSVG_ARC_FLAG_SWEEP,
-                                      PATHSEG_ARC_REL);
-    rsvg_path_builder_elliptical_arc (&pathdata, cx + r, cy,
-                                      r, r, 0., RSVG_ARC_FLAG_SWEEP,
+    rsvg_path_builder_elliptical_arc (&pathdata, cx, cy - r,
+                                      r, r, 0., RSVG_ARC_FLAG_FULL_ELLIPSE,
                                       PATHSEG_ARC_REL);
     rsvg_path_builder_close_path (&pathdata, 0);
     path = rsvg_path_builder_finish (pathdata);
@@ -310,13 +307,10 @@ _rsvg_node_ellipse_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
         return; /* TODO: the whole document should stop rendering at this point */
 
     rsvg_path_builder_init (&pathdata, 4);
-    rsvg_path_builder_move_to (&pathdata, cx + rx, cy,
+    rsvg_path_builder_move_to (&pathdata, cx, cy - ry,
                                PATHSEG_MOVETO_ABS);
-    rsvg_path_builder_elliptical_arc (&pathdata, cx - rx, cy,
-                                      rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
-                                      PATHSEG_ARC_REL);
-    rsvg_path_builder_elliptical_arc (&pathdata, cx + rx, cy,
-                                      rx, ry, 0., RSVG_ARC_FLAG_SWEEP,
+    rsvg_path_builder_elliptical_arc (&pathdata, cx, cy - ry,
+                                      rx, ry, 0., RSVG_ARC_FLAG_FULL_ELLIPSE,
                                       PATHSEG_ARC_REL);
     rsvg_path_builder_close_path (&pathdata, 0);
     path = rsvg_path_builder_finish (pathdata);

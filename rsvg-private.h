@@ -355,8 +355,9 @@ typedef enum {
     PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL = 19,
 } RsvgPathSegmentType;
 
-#define RSVG_ARC_FLAG_LARGEARC (1 << 0)
-#define RSVG_ARC_FLAG_SWEEP    (1 << 1)
+#define RSVG_ARC_FLAG_LARGEARC     (1 << 0)
+#define RSVG_ARC_FLAG_SWEEP        (1 << 1)
+#define RSVG_ARC_FLAG_FULL_ELLIPSE (1 << 2)
 
 struct _RSVGPathSegm {
     RsvgPathSegmentType type;
