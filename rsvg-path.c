@@ -338,9 +338,9 @@ rsvg_path_segm_has_dir (const RSVGPathSegm *const segm,
     case PATHSEG_CURVETO_CUBIC_SMOOTH_REL:
         if (rsvg_path_points_not_equal (prevx, prevy, segm->x, segm->y) ||
             rsvg_path_points_not_equal (prevx, prevy,
-                                        segm->att.c.x1, segm->att.c.x2) ||
+                                        segm->att.c.x1, segm->att.c.y1) ||
             rsvg_path_points_not_equal (prevx, prevy,
-                                        segm->att.c.x2, segm->att.c.x2) )
+                                        segm->att.c.x2, segm->att.c.y2) )
             return TRUE;
         else
             return FALSE;
@@ -351,7 +351,7 @@ rsvg_path_segm_has_dir (const RSVGPathSegm *const segm,
     case PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL:
         if (rsvg_path_points_not_equal (prevx, prevy, segm->x, segm->y) ||
             rsvg_path_points_not_equal (prevx, prevy,
-                                        segm->att.c.x1, segm->att.c.x2) )
+                                        segm->att.c.x1, segm->att.c.y1) )
             return TRUE;
         else
             return FALSE;
@@ -376,7 +376,7 @@ rsvg_path_get_segm_dir (const RSVGPathSegm *const path,
     double sinf, cosf; /* elliptical arc helper variables */
 
     /* for the direction searching algorithm */
-    gboolean has_dir;
+    gboolean has_dir, wrapped_subpath;
     double tempdirx, tempdiry;
     guint j, number_of_items;
 
@@ -521,16 +521,22 @@ rsvg_path_get_segm_dir (const RSVGPathSegm *const path,
 
         /* starting direction is the ending direction of the previous segment
            with non-zero length (within this subpath, if any) */
-        for (j = i - 1; j != i; j--) {
+        j = i;
+        wrapped_subpath = FALSE;
+        do {
+            j--;
             if (path[j].type == PATHSEG_MOVETO_ABS ||
                 path[j].type == PATHSEG_MOVETO_REL ||
                 path[j].type == PATHSEG_CLOSEPATH) {
                 /* Reached start of the current subpath. If it is closed,
                    continue from the end of the subpath. If it is open, try to
-                   take the direction from the incoming moveto */
+                   take the direction from the incoming moveto and stop. */
+                /* TODO: handle special case of no moveto before close? */
                 if (path[j].att.subpath.next_length != 0) {
-                    j += path[j].att.subpath.next_length + 1;
-                    /* + 1 because the for loop substracts 1 */
+                    if (path[j].att.subpath.next_length == 1 || wrapped_subpath)
+                        break;
+                    j += path[j].att.subpath.next_length;
+                    wrapped_subpath = TRUE;
                 } else {
                     if (j > 0 && rsvg_path_segm_has_dir (&path[j],
                                                          path[j - 1].x,
@@ -540,32 +546,39 @@ rsvg_path_get_segm_dir (const RSVGPathSegm *const path,
                     }
                     break;
                 }
-            } else if (rsvg_path_segm_has_dir (&path[j], path[j - 1].x,
-                                               path[j - 1].y)) {
+            }
+
+            if (rsvg_path_segm_has_dir (&path[j], path[j - 1].x, path[j - 1].y)) {
                 rsvg_path_get_segm_dir (path, j, &tempdirx, &tempdiry,
                                         startdirx, startdiry);
                 break;
             }
-        }
+        } while (TRUE);
 
         /* ending direction is the starting direction of the next segment
            with non-zero length (within this subpath, if any) */
-        for (j = i + 1; j < number_of_items && j != i; j++) {
+        j = i;
+        wrapped_subpath = FALSE;
+        do {
+            if (path[j].type == PATHSEG_CLOSEPATH) {
+                /* continue from the start of the subpath */
+                if (path[j].att.subpath.prev_length == 1 || wrapped_subpath)
+                    break;
+                j -= path[j].att.subpath.prev_length - 1;
+                wrapped_subpath = TRUE;
+            } else {
+                j++;
+                if (j == number_of_items)
+                    break;
+            }
+
             if (rsvg_path_segm_has_dir (&path[j], path[j - 1].x, path[j - 1].y)) {
                 rsvg_path_get_segm_dir (path, j, enddirx, enddiry,
                                         &tempdirx, &tempdiry);
                 break;
             }
-            if (path[j].type == PATHSEG_CLOSEPATH) {
-                /* continue from the start of the subpath (length - 1) */
-                j -= path[j].att.subpath.prev_length - 2;
-                /* - 1 extra because the for loop adds 1 */
-            } else if (path[j].type == PATHSEG_MOVETO_ABS ||
-                       path[j].type == PATHSEG_MOVETO_REL) {
-                /* reached start of the current subpath */
-                break;
-            }
-        }
+        } while (path[j].type != PATHSEG_MOVETO_ABS &&
+                 path[j].type != PATHSEG_MOVETO_REL);
 
         if (*enddirx == 0. && *enddiry == 0.) {
             if (*startdirx == 0. && *startdiry == 0.) {
