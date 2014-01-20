@@ -166,6 +166,20 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
     guint n, n_segs;
     cairo_matrix_t raffine;
 
+    double startdirx, startdiry, enddirx, enddiry;
+    double min_prec_x, min_prec_y;
+
+    /* Length of a very short line in cairo device pixels that is used for
+       zero-length segments. It has to be long enough to somewhat accurately
+       store it's direction, but must also be very short so it does not become
+       very visible itself. 1/16 px seems a good tradeoff. */
+    min_prec_x = 1. / ((affine.xx + affine.xy) * 16.);
+    min_prec_y = 1. / ((affine.yx + affine.yy) * 16.);
+    if (min_prec_x < min_prec_y)
+        min_prec_x = min_prec_y;
+    else
+        min_prec_y = min_prec_x;
+
     rsvg_cairo_path_builder_init (&cairopath, 32);
 
     x = y = 0.;
@@ -177,10 +191,50 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
         x = path[i].x;
         y = path[i].y;
 
+        /* handle zero-length segment at the end of a subpath */
+        if (path[i].type != PATHSEG_MOVETO_ABS &&
+            path[i].type != PATHSEG_MOVETO_REL &&
+            (i + 1 == number_of_items ||
+             path[i + 1].type == PATHSEG_MOVETO_ABS ||
+             path[i + 1].type == PATHSEG_MOVETO_REL) &&
+            !rsvg_path_segm_has_dir (&path[i], path[i - 1].x, path[i - 1].y) ) {
+            rsvg_path_get_segm_dir (path, i, &startdirx, &startdiry,
+                                    &enddirx, &enddiry);
+            rsvg_cairo_path_builder_line_to (&cairopath,
+                                             x + min_prec_x * enddirx,
+                                             y + min_prec_y * enddiry);
+            continue;
+        }
+
         switch (path[i].type) {
         case PATHSEG_MOVETO_ABS:
         case PATHSEG_MOVETO_REL:
-            rsvg_cairo_path_builder_move_to (&cairopath, x, y);
+            /* handle zero-length segment at the start of a subpath */
+            if (i + 1 < number_of_items &&
+                !rsvg_path_segm_has_dir (&path[i + 1], path[i].x, path[i].y) ) {
+                rsvg_path_get_segm_dir (path, i + 1, &startdirx, &startdiry,
+                                        &enddirx, &enddiry);
+
+                if (i + 2 == number_of_items ||
+                    path[i + 2].type == PATHSEG_MOVETO_ABS ||
+                    path[i + 2].type == PATHSEG_MOVETO_REL) {
+                    /* subpath has only one segment */
+                    rsvg_cairo_path_builder_move_to (&cairopath,
+                                                     x - min_prec_x * startdirx / 2.,
+                                                     y - min_prec_y * startdiry / 2.);
+                    rsvg_cairo_path_builder_line_to (&cairopath,
+                                                     x + min_prec_x * enddirx / 2.,
+                                                     y + min_prec_y * enddiry / 2.);
+                } else {
+                    rsvg_cairo_path_builder_move_to (&cairopath,
+                                                     x - min_prec_x * startdirx,
+                                                     y - min_prec_y * startdiry);
+                    rsvg_cairo_path_builder_line_to (&cairopath, x, y);
+                }
+                i++;
+            } else {
+                rsvg_cairo_path_builder_move_to (&cairopath, x, y);
+            }
             break;
         case PATHSEG_LINETO_ABS:
         case PATHSEG_LINETO_REL:
