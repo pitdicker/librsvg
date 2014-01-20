@@ -324,10 +324,16 @@ rsvg_path_segm_has_dir (const RSVGPathSegm *const segm,
     case PATHSEG_LINETO_HORIZONTAL_REL:
     case PATHSEG_LINETO_VERTICAL_ABS:
     case PATHSEG_LINETO_VERTICAL_REL:
-    case PATHSEG_ARC_ABS:
-    case PATHSEG_ARC_REL:
     case PATHSEG_CLOSEPATH:
         if (rsvg_path_points_not_equal (prevx, prevy, segm->x, segm->y))
+            return TRUE;
+        else
+            return FALSE;
+        break;
+    case PATHSEG_ARC_ABS:
+    case PATHSEG_ARC_REL:
+        if (segm->att.a.flags & RSVG_ARC_FLAG_FULL_ELLIPSE ||
+            rsvg_path_points_not_equal (prevx, prevy, segm->x, segm->y))
             return TRUE;
         else
             return FALSE;
@@ -477,12 +483,9 @@ rsvg_path_get_segm_dir (const RSVGPathSegm *const path,
         break;
     case PATHSEG_ARC_ABS:
     case PATHSEG_ARC_REL:
-        if (!rsvg_path_points_not_equal (path[i].x, path[i].y,
-                                         path[i - 1].x, path[i - 1].y)) {
-            has_dir = FALSE;
-        } else if (rsvg_path_arc_center_para (path[i], path[i - 1].x, path[i - 1].y,
-                                              &cx, &cy, &rx, &ry,
-                                              &th1, &th2, &delta_theta)) {
+        if (rsvg_path_arc_center_para (path[i], path[i - 1].x, path[i - 1].y,
+                                       &cx, &cy, &rx, &ry,
+                                       &th1, &th2, &delta_theta)) {
             x1 = rx * sin (th1);
             y1 = ry * -cos (th1);
             x2 = rx * sin (th2);
