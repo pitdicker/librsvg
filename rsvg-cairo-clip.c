@@ -29,6 +29,7 @@
 
 #include "rsvg-cairo-draw.h"
 #include "rsvg-cairo-clip.h"
+#include "rsvg-cairo-path.h"
 #include "rsvg-cairo-render.h"
 #include "rsvg-styles.h"
 #include "rsvg-path.h"
@@ -61,12 +62,13 @@ rsvg_cairo_clip_apply_affine (RsvgCairoClipRender *render, cairo_matrix_t *affin
 }
 
 static void
-rsvg_cairo_clip_render_path (RsvgDrawingCtx * ctx, const cairo_path_t *path)
+rsvg_cairo_clip_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
 {
     RsvgCairoClipRender *render = RSVG_CAIRO_CLIP_RENDER (ctx->render);
     RsvgCairoRender *cairo_render = &render->super;
     RsvgState *state = rsvg_current_state (ctx);
     cairo_t *cr;
+    cairo_path_t *path;
 
     cr = cairo_render->cr;
 
@@ -74,7 +76,9 @@ rsvg_cairo_clip_render_path (RsvgDrawingCtx * ctx, const cairo_path_t *path)
 
     cairo_set_fill_rule (cr, rsvg_current_state (ctx)->clip_rule);
 
+    path = rsvg_cairo_build_path (rsvg_path, state->affine);
     cairo_append_path (cr, path);
+    rsvg_cairo_path_destroy (path);
 }
 
 static void
