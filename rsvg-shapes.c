@@ -736,10 +736,12 @@ _rsvg_node_path_build_path (const char *data)
 {
     RSVGParsePathCtx ctx;
     char cmd;
+    gboolean in_cmd;
 
     rsvg_path_builder_init (&ctx.path, 16);
 
     cmd = ctx.lastcmd = 0;
+    in_cmd = FALSE;
     ctx.param = 0;
     ctx.x = ctx.y = 0.;
 
@@ -764,13 +766,14 @@ _rsvg_node_path_build_path (const char *data)
                     goto exitloop;
                 ctx.params[ctx.param] = *data - '0';
             } else {
-                ctx.params[ctx.param] = g_ascii_strtod(data, (gchar **) &data);
+                ctx.params[ctx.param] = g_ascii_strtod (data, (gchar **) &data);
                 data -= 1;
                 /* strtod also parses infinity and nan, which are not valid */
                 if (!isfinite (ctx.params[ctx.param]))
                     goto exitloop;
             }
             ctx.param++;
+            in_cmd = TRUE;
 
             switch (cmd) {
             case 'M':
@@ -809,7 +812,7 @@ _rsvg_node_path_build_path (const char *data)
                 break;
             case 'A':
                 if (ctx.param == 7) {
-                    /* arc is invalid if rx or ry < 0 */
+                    /* arc is invalid if rx < 0 or ry < 0 */
                     if (ctx.params[0] < 0. || ctx.params[1] < 0.)
                         goto exitloop;
                     rsvg_parse_path_do_cmd (&ctx, cmd);
@@ -818,34 +821,57 @@ _rsvg_node_path_build_path (const char *data)
             default:
                 goto exitloop;
             }
+
+            if (ctx.param == 0) { /* just finished parsing a command */
+                in_cmd = FALSE;
+            } else {
+                /* skip trailing whitespaces and comma */
+                data++;
+                while (*data == ' ' || *data == '\t' || *data == '\r' || *data == '\n')
+                    data++;
+                if (*data != ',')
+                    data--;
+            }
             break;
         case 'L': case 'C': case 'S': case 'H': case 'V': case 'Q': case 'T': case 'A':
             if (cmd == 0) /* only a moveto is accepted as the first command of path data */
                 goto exitloop;
             /* fallthrough */
         case 'M':
-            if (ctx.param != 0)
+            if (in_cmd)
                 goto exitloop;
             cmd = *data;
             ctx.rel = FALSE;
+            in_cmd = TRUE;
             break;
         case 'l': case 'c': case 's': case 'h': case 'v': case 'q': case 't': case 'a':
             if (cmd == 0) /* only a moveto is accepted as the first command of path data */
                 goto exitloop;
             /* fallthrough */
         case 'm':
-            if (ctx.param != 0)
+            if (in_cmd)
                 goto exitloop;
             cmd = *data - 'a' + 'A';
             ctx.rel = TRUE;
+            in_cmd = TRUE;
             break;
         case 'Z': case 'z':
-            if (ctx.param != 0 || cmd == 0)
+            if (cmd == 0)
+                goto exitloop;
+            if (in_cmd)
                 goto exitloop;
             cmd = 'Z';
             rsvg_parse_path_do_cmd (&ctx, cmd);
             break;
-        case ' ': case '\t': case '\r': case '\n': case ',':
+        case ',':
+            /* can only occure between multiple argument sequences of the last command */
+            if (cmd == 0)
+                goto exitloop;
+            if (in_cmd)
+                goto exitloop;
+            in_cmd = TRUE;
+            break;
+        case ' ': case '\t': case '\r': case '\n':
             break;
         default: /* invalid character */
             goto exitloop;
