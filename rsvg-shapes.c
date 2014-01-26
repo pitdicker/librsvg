@@ -486,9 +486,14 @@ _rsvg_node_poly_build_path (const char *data,
                 }
                 param = 0;
             }
-            data -= 1;
+
+            /* skip trailing whitespaces and comma */
+            while (*data == ' ' || *data == '\t' || *data == '\r' || *data == '\n')
+                data++;
+            if (*data != ',')
+                data--;
             break;
-        case ' ': case '\t': case '\r': case '\n': case ',':
+        case ' ': case '\t': case '\r': case '\n':
             break;
         default: /* invalid character */
             goto exitloop;
