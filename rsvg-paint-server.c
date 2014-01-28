@@ -275,8 +275,8 @@ rsvg_linear_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
                 rsvg_defs_add_resolver (ctx->priv->defs, &grad->fallback, value);
         }
         if ((value = rsvg_property_bag_lookup (atts, "gradientTransform"))) {
-            rsvg_parse_transform (&grad->affine, value);
-            grad->hastransform = TRUE;
+            if (rsvg_parse_transform (&grad->affine, value))
+                grad->hastransform = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "color")))
             grad->current_color = rsvg_css_parse_color (value, 0);
@@ -349,8 +349,8 @@ rsvg_radial_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
                 rsvg_defs_add_resolver (ctx->priv->defs, &grad->fallback, value);
         }
         if ((value = rsvg_property_bag_lookup (atts, "gradientTransform"))) {
-            rsvg_parse_transform (&grad->affine, value);
-            grad->hastransform = TRUE;
+            if (rsvg_parse_transform (&grad->affine, value))
+                grad->hastransform = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "color"))) {
             grad->current_color = rsvg_css_parse_color (value, 0);
@@ -433,8 +433,8 @@ rsvg_pattern_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts
             }
         }
         if ((value = rsvg_property_bag_lookup (atts, "patternTransform"))) {
-            rsvg_parse_transform (&pattern->affine, value);
-            pattern->hastransform = TRUE;
+            if (rsvg_parse_transform (&pattern->affine, value))
+                pattern->hastransform = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "patternUnits"))) {
             if (!strcmp (value, "userSpaceOnUse"))
