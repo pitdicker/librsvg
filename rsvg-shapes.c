@@ -421,9 +421,7 @@ _rsvg_node_poly_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
     const char *klazz = NULL, *id = NULL, *value;
 
     if (rsvg_property_bag_size (atts)) {
-        /* support for svg < 1.0 which used verts */
-        if ((value = rsvg_property_bag_lookup (atts, "verts"))
-            || (value = rsvg_property_bag_lookup (atts, "points"))) {
+        if (value = rsvg_property_bag_lookup (atts, "points")) {
             if (poly->path)
                 rsvg_path_destroy (poly->path);
             poly->path = _rsvg_node_poly_build_path (value,
