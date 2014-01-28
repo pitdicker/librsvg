@@ -1,25 +1,25 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* vim: set sw=4 sts=4 ts=4 expandtab: */
-/* 
+/*
    rsvg-paint-server.c: Implement the SVG paint server abstraction.
- 
+
    Copyright (C) 2000 Eazel, Inc.
-  
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
    published by the Free Software Foundation; either version 2 of the
    License, or (at your option) any later version.
-  
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Library General Public License for more details.
-  
+
    You should have received a copy of the GNU Library General Public
    License along with this program; if not, write to the
    Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.
-  
+
    Author: Raph Levien <raph@artofcode.com>
 */
 
@@ -273,7 +273,7 @@ rsvg_linear_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
         if ((value = rsvg_property_bag_lookup (atts, "xlink:href"))) {
             if (self != rsvg_defs_lookup (ctx->priv->defs, value))
                 rsvg_defs_add_resolver (ctx->priv->defs, &grad->fallback, value);
-	}
+        }
         if ((value = rsvg_property_bag_lookup (atts, "gradientTransform"))) {
             rsvg_parse_transform (&grad->affine, value);
             grad->hastransform = TRUE;

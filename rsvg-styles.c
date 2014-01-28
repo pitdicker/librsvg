@@ -236,10 +236,10 @@ rsvg_state_clone (RsvgState * dst, const RsvgState * src)
 }
 
 /*
-  This function is where all inheritance takes place. It is given a 
+  This function is where all inheritance takes place. It is given a
   base and a modifier state, as well as a function to determine
   how the base is modified and a flag as to whether things that can
-  not be inherited are copied streight over, or ignored.
+  not be inherited are copied straight over, or ignored.
 */
 
 static void
@@ -311,17 +311,17 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
     if (function (dst->has_text_anchor, src->has_text_anchor))
         dst->text_anchor = src->text_anchor;
     if (function (dst->has_letter_spacing, src->has_letter_spacing))
-	dst->letter_spacing = src->letter_spacing;
+        dst->letter_spacing = src->letter_spacing;
     if (function (dst->has_startMarker, src->has_startMarker))
         dst->startMarker = src->startMarker;
     if (function (dst->has_middleMarker, src->has_middleMarker))
         dst->middleMarker = src->middleMarker;
     if (function (dst->has_endMarker, src->has_endMarker))
         dst->endMarker = src->endMarker;
-	if (function (dst->has_shape_rendering_type, src->has_shape_rendering_type))
-		dst->shape_rendering_type = src->shape_rendering_type;
-	if (function (dst->has_text_rendering_type, src->has_text_rendering_type))
-		dst->text_rendering_type = src->text_rendering_type;
+    if (function (dst->has_shape_rendering_type, src->has_shape_rendering_type))
+        dst->shape_rendering_type = src->shape_rendering_type;
+    if (function (dst->has_text_rendering_type, src->has_text_rendering_type))
+        dst->text_rendering_type = src->text_rendering_type;
 
     if (function (dst->has_font_family, src->has_font_family)) {
         g_free (dst->font_family);      /* font_family is always set to something */
@@ -329,10 +329,10 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
     }
 
     if (function (dst->has_space_preserve, src->has_space_preserve))
-	dst->space_preserve = src->space_preserve;
+        dst->space_preserve = src->space_preserve;
 
     if (function (dst->has_visible, src->has_visible))
-	dst->visible = src->visible;
+        dst->visible = src->visible;
 
     if (function (dst->has_lang, src->has_lang)) {
         if (dst->has_lang)
@@ -368,7 +368,7 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
 /*
   reinherit is given dst which is the top of the state stack
   and src which is the layer before in the state stack from
-  which it should be inherited from 
+  which it should be inherited from
 */
 
 static int
@@ -391,7 +391,7 @@ rsvg_state_reinherit (RsvgState * dst, const RsvgState * src)
   which it should be inherited from, however if anything is
   directly specified in src (the second last layer) it will
   override anything on the top layer, this is for overrides
-  in use tags 
+  in use tags
 */
 
 static int
@@ -423,9 +423,9 @@ rsvg_state_override (RsvgState * dst, const RsvgState * src)
 }
 
 /*
-  put something new on the inheritance stack, dst is the top of the stack, 
+  put something new on the inheritance stack, dst is the top of the stack,
   src is the state to be integrated, this is essentially the opposite of
-  reinherit, because it is being given stuff to be integrated on the top, 
+  reinherit, because it is being given stuff to be integrated on the top,
   rather than the context underneath.
 */
 
@@ -589,7 +589,7 @@ rsvg_parse_style_pair (RsvgHandle * ctx,
             state->visible = TRUE;
         else
             state->has_visible = FALSE;
-	} else if (g_str_equal (name, "xml:space")) {
+    } else if (g_str_equal (name, "xml:space")) {
         state->has_space_preserve = TRUE;
         if (g_str_equal (value, "default"))
             state->space_preserve = FALSE;
@@ -749,8 +749,8 @@ rsvg_parse_style_pair (RsvgHandle * ctx,
                 state->text_anchor = TEXT_ANCHOR_END;
         }
     } else if (g_str_equal (name, "letter-spacing")) {
-	state->has_letter_spacing = TRUE;
-	state->letter_spacing = _rsvg_css_parse_length (value);
+        state->has_letter_spacing = TRUE;
+        state->letter_spacing = _rsvg_css_parse_length (value);
     } else if (g_str_equal (name, "stop-color")) {
         if (!g_str_equal (value, "inherit")) {
             state->stop_color = rsvg_css_parse_color (value, &state->has_stop_color);
@@ -836,7 +836,7 @@ rsvg_parse_style_pair (RsvgHandle * ctx,
                         state->dash.dash[i] = state->dash.dash[i - n_dashes];
 
                 g_strfreev (dashes);
-                /* If the dashes add up to 0, then it should 
+                /* If the dashes add up to 0, then it should
                    be ignored */
                 if (total == 0) {
                     g_free (state->dash.dash);
@@ -948,7 +948,7 @@ parse_style_value (const gchar *string, gchar **value, gboolean *important)
 
 /* Split a CSS2 style into individual style arguments, setting attributes
    in the SVG context.
-   
+
    It's known that this is _way_ out of spec. A more complete CSS2
    implementation will happen later.
 */
@@ -1176,8 +1176,8 @@ ccss_import_style (CRDocHandler * a_this,
                                                  &mime_type,
                                                  &stylesheet_data_len,
                                                  NULL);
-    if (stylesheet_data == NULL || 
-        mime_type == NULL || 
+    if (stylesheet_data == NULL ||
+        mime_type == NULL ||
         strcmp (mime_type, "text/css") != 0) {
         g_free (stylesheet_data);
         g_free (mime_type);
@@ -1502,10 +1502,10 @@ rsvg_state_free_all (RsvgState * state)
 /**
  * rsvg_property_bag_new:
  * @atts:
- * 
+ *
  * The property bag will NOT copy the attributes and values. If you need
  * to store them for later, use rsvg_property_bag_dup().
- * 
+ *
  * Returns: (transfer full): a new property bag
  */
 RsvgPropertyBag *
@@ -1527,9 +1527,9 @@ rsvg_property_bag_new (const char **atts)
 /**
  * rsvg_property_bag_dup:
  * @bag:
- * 
+ *
  * Returns a copy of @bag that owns the attributes and values.
- * 
+ *
  * Returns: (transfer full): a new property bag
  */
 RsvgPropertyBag *
@@ -1543,7 +1543,7 @@ rsvg_property_bag_dup (RsvgPropertyBag * bag)
 
     g_hash_table_iter_init (&iter, bag);
     while (g_hash_table_iter_next (&iter, &key, &value))
-      g_hash_table_insert (dup, 
+      g_hash_table_insert (dup,
                            (gpointer) g_strdup ((char *) key),
                            (gpointer) g_strdup ((char *) value));
 
@@ -1604,14 +1604,14 @@ rsvg_state_pop (RsvgDrawingCtx * ctx)
 }
 
 /*
-  A function for modifying the top of the state stack depending on a 
-  flag given. If that flag is 0, style and transform will inherit 
+  A function for modifying the top of the state stack depending on a
+  flag given. If that flag is 0, style and transform will inherit
   normally. If that flag is 1, style will inherit normally with the
   exception that any value explicity set on the second last level
   will have a higher precedence than values set on the last level.
   If the flag equals two then the style will be overridden totally
-  however the transform will be left as is. This is because of 
-  patterns which are not based on the context of their use and are 
+  however the transform will be left as is. This is because of
+  patterns which are not based on the context of their use and are
   rather based wholly on their own loading context. Other things
   may want to have this totally disabled, and a value of three will
   achieve this.
