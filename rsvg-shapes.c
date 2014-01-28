@@ -421,7 +421,7 @@ _rsvg_node_poly_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
     const char *klazz = NULL, *id = NULL, *value;
 
     if (rsvg_property_bag_size (atts)) {
-        if (value = rsvg_property_bag_lookup (atts, "points")) {
+        if ((value = rsvg_property_bag_lookup (atts, "points"))) {
             if (poly->path)
                 rsvg_path_destroy (poly->path);
             poly->path = _rsvg_node_poly_build_path (value,
@@ -473,6 +473,11 @@ _rsvg_node_poly_build_path (const char *data,
         case '5': case '6': case '7': case '8': case '9':
             params[param] = g_ascii_strtod(data, (gchar **) &data);
             param++;
+
+            /* strtod also parses infinity and nan, which are not valid */
+            if (!isfinite (params[param]))
+                goto exitloop;
+
             if (param == 2) {
                 if (first_cmd) {
                     rsvg_path_builder_move_to (&path, params[0], params[1],
