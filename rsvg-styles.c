@@ -60,21 +60,6 @@ typedef struct _StyleValueData {
     gboolean important;
 } StyleValueData;
 
-/*
- * _rsvg_cairo_matrix_init_shear: Set up a shearing matrix.
- * @dst: Where to store the resulting affine transform.
- * @theta: Shear angle in degrees.
- *
- * Sets up a shearing matrix. In the standard libart coordinate system
- * and a small value for theta, || becomes \\. Horizontal lines remain
- * unchanged.
- **/
-static void
-_rsvg_cairo_matrix_init_shear (cairo_matrix_t *dst, double theta)
-{
-  cairo_matrix_init (dst, 1., 0., tan (theta * M_PI / 180.0), 1., 0., 0);
-}
-
 static StyleValueData *
 style_value_data_new (const gchar *value, gboolean important)
 {
@@ -1190,103 +1175,142 @@ ccss_import_style (CRDocHandler * a_this,
     g_free (mime_type);
 }
 
-/* Parse an SVG transform string into an affine matrix. Reference: SVG
-   working draft dated 1999-07-06, section 8.5. Return TRUE on
-   success. */
+/* Parse an SVG transform string into an affine matrix. Reference: SVG 1.1
+   (Second Edition), section 7.6. Returns TRUE on success. */
 gboolean
 rsvg_parse_transform (cairo_matrix_t *dst, const char *src)
 {
-    int idx;
-    char keyword[32];
     double args[6];
     int n_args;
-    guint key_len;
     cairo_matrix_t affine;
+    gboolean expect_next;
+
+    enum {
+        MATRIX,
+        TRANSLATE,
+        SCALE,
+        ROTATE,
+        SKEWX,
+        SKEWY
+    } keyword;
+    const int max_args[6] = {6, 2, 2, 3, 1, 1};
 
     cairo_matrix_init_identity (dst);
 
-    idx = 0;
-    while (src[idx]) {
+    while (*src) {
         /* skip initial whitespace */
-        while (g_ascii_isspace (src[idx]))
-            idx++;
-
-        if (src[idx] == '\0')
-            break;
+        while (*src == ' ' || *src == '\t' || *src == '\r' || *src == '\n')
+            src++;
 
         /* parse keyword */
-        for (key_len = 0; key_len < sizeof (keyword); key_len++) {
-            char c;
-
-            c = src[idx];
-            if (g_ascii_isalpha (c) || c == '-')
-                keyword[key_len] = src[idx++];
-            else
-                break;
+        if (!strncmp (src, "matrix", 6)) {
+            keyword = MATRIX;
+            src += 6;
+        } else if (!strncmp (src, "translate", 9)) {
+            keyword = TRANSLATE;
+            src += 9;
+        } else if (!strncmp (src, "scale", 5)) {
+            keyword = SCALE;
+            src += 5;
+        } else if (!strncmp (src, "rotate", 6)) {
+            keyword = ROTATE;
+            src += 6;
+        } else if (!strncmp (src, "skewX", 5)) {
+            keyword = SKEWX;
+            src += 5;
+        } else if (!strncmp (src, "skewY", 5)) {
+            keyword = SKEWY;
+            src += 5;
+        } else {
+            goto invalid_transform;
         }
-        if (key_len >= sizeof (keyword))
-            return FALSE;
-        keyword[key_len] = '\0';
 
         /* skip whitespace */
-        while (g_ascii_isspace (src[idx]))
-            idx++;
+        while (*src == ' ' || *src == '\t' || *src == '\r' || *src == '\n')
+            src++;
 
-        if (src[idx] != '(')
-            return FALSE;
-        idx++;
+        if (*src != '(')
+            goto invalid_transform;
+        src++;
 
-        for (n_args = 0;; n_args++) {
-            char c;
-            char *end_ptr;
+        n_args = 0;
+        do {
+            if (n_args == max_args[keyword])
+                goto invalid_transform;
 
             /* skip whitespace */
-            while (g_ascii_isspace (src[idx]))
-                idx++;
-            c = src[idx];
-            if (g_ascii_isdigit (c) || c == '+' || c == '-' || c == '.') {
-                if (n_args == sizeof (args) / sizeof (args[0]))
-                    return FALSE;       /* too many args */
-                args[n_args] = g_ascii_strtod (src + idx, &end_ptr);
-                idx = end_ptr - src;
+            while (*src == ' ' || *src == '\t' || *src == '\r' || *src == '\n')
+                src++;
 
-                while (g_ascii_isspace (src[idx]))
-                    idx++;
+            /* parse number */
+            switch (*src) {
+            case '.':
+                /* '.' must be followed by a number */
+                if (!(src[1] >= 0 && src[1] <= '9'))
+                    goto invalid_transform;
+                /* fallthrough */
+            case '+': case '-':
+                /* '+' or '-' must be followed by a digit,
+                   or by a '.' that is followed by a digit */
+                if (!((src[1] >= 0 && src[1] <= '9') ||
+                      (src[1] == '.' && !(src[2] >= 0 && src[2] <= '9'))))
+                    goto invalid_transform;
+                /* fallthrough */
+            case '0': case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+                args[n_args] = g_ascii_strtod(src, (gchar **) &src);
+                n_args++;
 
-                /* skip optional comma */
-                if (src[idx] == ',')
-                    idx++;
-            } else if (c == ')')
+                /* strtod also parses infinity and nan, which are not valid */
+                if (!isfinite (args[n_args]))
+                    goto invalid_transform;
                 break;
-            else
-                return FALSE;
-        }
-        idx++;
+            default:
+                goto invalid_transform;
+            }
+
+            /* skip whitespace */
+            while (*src == ' ' || *src == '\t' || *src == '\r' || *src == '\n')
+                src++;
+
+            /* skip optional comma */
+            expect_next = FALSE;
+            if (*src == ',') {
+                src++;
+                expect_next = TRUE;
+            }
+        } while (*src != ')');
+        src++;
+
+        if (expect_next)
+            goto invalid_transform;
 
         /* ok, have parsed keyword and args, now modify the transform */
-        if (!strcmp (keyword, "matrix")) {
+        switch (keyword) {
+        case MATRIX:
             if (n_args != 6)
-                return FALSE;
-
+                goto invalid_transform;
             cairo_matrix_init (&affine, args[0], args[1], args[2], args[3], args[4], args[5]);
             cairo_matrix_multiply (dst, &affine, dst);
-        } else if (!strcmp (keyword, "translate")) {
+            break;
+        case TRANSLATE:
             if (n_args == 1)
-                args[1] = 0;
+                args[1] = 0.;
             else if (n_args != 2)
-                return FALSE;
+                goto invalid_transform;
             cairo_matrix_init_translate (&affine, args[0], args[1]);
             cairo_matrix_multiply (dst, &affine, dst);
-        } else if (!strcmp (keyword, "scale")) {
+            break;
+        case SCALE:
             if (n_args == 1)
                 args[1] = args[0];
             else if (n_args != 2)
-                return FALSE;
+                goto invalid_transform;
             cairo_matrix_init_scale (&affine, args[0], args[1]);
             cairo_matrix_multiply (dst, &affine, dst);
-        } else if (!strcmp (keyword, "rotate")) {
+            break;
+        case ROTATE:
             if (n_args == 1) {
-
                 cairo_matrix_init_rotate (&affine, args[0] * M_PI / 180.);
                 cairo_matrix_multiply (dst, &affine, dst);
             } else if (n_args == 3) {
@@ -1298,25 +1322,44 @@ rsvg_parse_transform (cairo_matrix_t *dst, const char *src)
 
                 cairo_matrix_init_translate (&affine, -args[1], -args[2]);
                 cairo_matrix_multiply (dst, &affine, dst);
-            } else
-                return FALSE;
-        } else if (!strcmp (keyword, "skewX")) {
+            } else {
+                goto invalid_transform;
+            }
+            break;
+        case SKEWX:
             if (n_args != 1)
-                return FALSE;
-            _rsvg_cairo_matrix_init_shear (&affine, args[0]);
+                goto invalid_transform;
+            cairo_matrix_init (&affine, 1., 0., tan (args[0] * M_PI / 180.0), 1., 0., 0.);
             cairo_matrix_multiply (dst, &affine, dst);
-        } else if (!strcmp (keyword, "skewY")) {
+            break;
+        case SKEWY:
             if (n_args != 1)
-                return FALSE;
-            _rsvg_cairo_matrix_init_shear (&affine, args[0]);
-            /* transpose the affine, given that we know [1] is zero */
-            affine.yx = affine.xy;
-            affine.xy = 0.;
+                goto invalid_transform;
+            cairo_matrix_init (&affine, 1., tan (args[0] * M_PI / 180.0), 0., 1., 0., 0.);
             cairo_matrix_multiply (dst, &affine, dst);
-        } else
-            return FALSE;       /* unknown keyword */
+            break;
+        }
+
+        /* skip whitespace */
+        while (*src == ' ' || *src == '\t' || *src == '\r' || *src == '\n')
+            src++;
+
+        /* skip optional comma */
+        expect_next = FALSE;
+        if (*src == ',') {
+            src++;
+            expect_next = TRUE;
+        }
     }
+
+    if (expect_next)
+        goto invalid_transform;
+
     return TRUE;
+
+invalid_transform:
+    cairo_matrix_init_identity (dst);
+    return FALSE;
 }
 
 /**
