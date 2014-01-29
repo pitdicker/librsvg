@@ -205,7 +205,6 @@ rsvg_marker_calc_angle (double indirx, double indiry,
     if (fabs (indirx + outdirx) < DBL_EPSILON &&
         fabs (indiry + outdiry) < DBL_EPSILON) {
         return atan2 (indiry, indirx);
-/*        return atan2 (indirx, -indiry); TODO: perpendicular makes more sense... */
     }
 
     return atan2 (indiry + outdiry, indirx + outdirx);
