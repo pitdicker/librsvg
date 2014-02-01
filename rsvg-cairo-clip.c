@@ -76,7 +76,7 @@ rsvg_cairo_clip_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path
 
     cairo_set_fill_rule (cr, rsvg_current_state (ctx)->clip_rule);
 
-    path = rsvg_cairo_build_path (rsvg_path, state->affine);
+    path = rsvg_cairo_build_path (rsvg_path, state);
     cairo_append_path (cr, path);
     rsvg_cairo_path_destroy (path);
 }

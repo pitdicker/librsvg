@@ -31,11 +31,12 @@
 
 #include <cairo.h>
 #include "rsvg-private.h"
+#include "rsvg-styles.h"
 
 G_BEGIN_DECLS
 
 G_GNUC_INTERNAL
-cairo_path_t * rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine);
+cairo_path_t * rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state);
 G_GNUC_INTERNAL
 void rsvg_cairo_path_destroy (cairo_path_t *path);
 

@@ -35,6 +35,7 @@
 
 #include "rsvg-private.h"
 #include "rsvg-path.h"
+#include "rsvg-styles.h"
 
 /* fraction of pixels to which the approximation of an arc by bezier curves
    should be accurate */
@@ -152,7 +153,7 @@ rsvg_cairo_path_builder_finish (GArray *cairopath)
 }
 
 cairo_path_t *
-rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
+rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
 {
     GArray *cairopath;
 
@@ -164,15 +165,14 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
     /* elliptical arc helper variables */
     double sinf, cosf, th, t;
     guint n, n_segs;
-    cairo_matrix_t raffine;
 
-    double startdirx, startdiry, enddirx, enddiry;
+    cairo_matrix_t affine;
     double min_prec_x;
     gboolean zero_length_subpath;
 
     /* Length of a very short line in cairo device pixels that is used for
        zero-length segments. */
-    min_prec_x = 1. / ((affine.xx + affine.xy) * 256.);
+    min_prec_x = 1. / ((state->affine.xx + state->affine.xy) * 256.);
 
     rsvg_cairo_path_builder_init (&cairopath, 32);
 
@@ -256,10 +256,10 @@ rsvg_cairo_build_path (const RSVGPathSegm *const path, cairo_matrix_t affine)
             /* calculate the number of bezier curves neccesary to approximate
                the arc, depending on it's average radius (including
                transformations) and included angle */
-            raffine = affine;
-            cairo_matrix_rotate (&raffine, path[i].att.a.angle);
-            x1 = raffine.xx * rx + raffine.xy * ry;
-            y1 = raffine.yx * rx + raffine.yy * ry;
+            affine = state->affine;
+            cairo_matrix_rotate (&affine, path[i].att.a.angle);
+            x1 = affine.xx * rx + affine.xy * ry;
+            y1 = affine.yx * rx + affine.yy * ry;
             n_segs = ceil (sqrt (x1 * x1 + y1 * y1)
                            * 8 * M_PI / fabs (delta_theta)
                            * .001231984794614557 / ARC_MAX_ERROR);
