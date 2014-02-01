@@ -157,7 +157,7 @@ rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
 {
     GArray *cairopath;
 
-    guint i, j, number_of_items;
+    guint i, subpath_segs, number_of_items;
     double x, y, prevx, prevy;
     double x1, y1, x2, y2, x3, y3, xc, yc; /* curve control points */
     double rx, ry, cx, cy, th1, th2, delta_theta; /* elliptical arc parameters */
@@ -166,6 +166,7 @@ rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
     double sinf, cosf, th, t;
     guint n, n_segs;
 
+    cairo_line_cap_t cap = state->cap;
     cairo_matrix_t affine;
     double min_prec_x;
     gboolean zero_length_subpath;
@@ -177,6 +178,8 @@ rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
     rsvg_cairo_path_builder_init (&cairopath, 32);
 
     x = y = 0.;
+    zero_length_subpath = TRUE;
+    subpath_segs = 0;
     number_of_items = path[0].att.path.number_of_items;
 
     for (i = 0; i < number_of_items; i++) {
@@ -185,29 +188,38 @@ rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
         x = path[i].x;
         y = path[i].y;
 
+        /* handle zero-length subpaths */
+        if (cap == CAIRO_LINE_CAP_SQUARE) {
+            if (path[i].type == PATHSEG_MOVETO_ABS ||
+                path[i].type == PATHSEG_MOVETO_REL) {
+                /* just finished a subpath */
+                if (zero_length_subpath == TRUE && subpath_segs > 0) {
+                    rsvg_cairo_path_builder_move_to (&cairopath, prevx - min_prec_x, prevy);
+                    rsvg_cairo_path_builder_line_to (&cairopath, prevx + min_prec_x, prevy);
+                }
+                zero_length_subpath = TRUE;
+                subpath_segs = 0;
+            } else if (path[i].type == PATHSEG_CLOSEPATH) {
+                subpath_segs = 0;
+                if (zero_length_subpath == TRUE) {
+                    rsvg_cairo_path_builder_move_to (&cairopath, prevx - min_prec_x, prevy);
+                    rsvg_cairo_path_builder_line_to (&cairopath, prevx + min_prec_x, prevy);
+                    rsvg_cairo_path_builder_move_to (&cairopath, prevx, prevy);
+                    continue;
+                }
+                zero_length_subpath = TRUE;
+            } else {
+                subpath_segs++;
+                if (!rsvg_path_segm_has_dir (&path[i], prevx, prevy))
+                    continue;
+                zero_length_subpath = FALSE;
+            }
+        }
+
         switch (path[i].type) {
         case PATHSEG_MOVETO_ABS:
         case PATHSEG_MOVETO_REL:
-            /* handle zero-length subpaths */
-            zero_length_subpath = TRUE;
-            j = i + 1;
-            while (j < number_of_items &&
-                   path[j].type != PATHSEG_MOVETO_ABS &&
-                   path[j].type != PATHSEG_MOVETO_REL) {
-                if (rsvg_path_segm_has_dir (&path[j], path[j - 1].x, path[j - 1].y)) {
-                    zero_length_subpath = FALSE;
-                    break;
-                }
-                j++;
-            }
-
-            if (zero_length_subpath && j > i + 1) {
-                rsvg_cairo_path_builder_move_to (&cairopath, x - min_prec_x, y);
-                rsvg_cairo_path_builder_line_to (&cairopath, x + min_prec_x, y);
-                i = j - 1;
-            } else {
-                rsvg_cairo_path_builder_move_to (&cairopath, x, y);
-            }
+            rsvg_cairo_path_builder_move_to (&cairopath, x, y);
             break;
         case PATHSEG_LINETO_ABS:
         case PATHSEG_LINETO_REL:
@@ -293,6 +305,11 @@ rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
         case PATHSEG_UNKNOWN:
             ;
         }
+    }
+
+    if (zero_length_subpath == TRUE && subpath_segs > 0) {
+        rsvg_cairo_path_builder_move_to (&cairopath, x - min_prec_x, y);
+        rsvg_cairo_path_builder_line_to (&cairopath, x + min_prec_x, y);
     }
 
     return rsvg_cairo_path_builder_finish (cairopath);
