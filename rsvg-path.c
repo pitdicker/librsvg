@@ -243,7 +243,7 @@ rsvg_path_arc_center_para (const RSVGPathSegm arc,
     if (fabs (prevy) > k1) k1 = fabs (prevy);
     if (fabs (x) > k1)     k1 = fabs (x);
     if (fabs (y) > k1)     k1 = fabs (y);
-    if (*rx < k1 * DBL_EPSILON && *ry < k1 * DBL_EPSILON)
+    if (*rx < k1 * DBL_EPSILON || *ry < k1 * DBL_EPSILON)
         return FALSE;
 
     /* X-axis */
