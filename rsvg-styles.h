@@ -82,7 +82,6 @@ struct _RsvgState {
     RsvgFilter *filter;
     void *mask;
     void *clip_path_ref;
-    guint8 adobe_blend;         /* 0..11 */
     guint8 opacity;             /* 0..255 */
 
     RsvgPaintServer *fill;

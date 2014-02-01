@@ -103,7 +103,6 @@ rsvg_state_init (RsvgState * state)
     cairo_matrix_init_identity (&state->personal_affine);
     state->mask = NULL;
     state->opacity = 0xff;
-    state->adobe_blend = 0;
     state->fill = rsvg_paint_server_parse (NULL, NULL, "#000", 0);
     state->fill_opacity = 0xff;
     state->stroke_opacity = 0xff;
@@ -343,7 +342,6 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
         dst->clip_path_ref = src->clip_path_ref;
         dst->mask = src->mask;
         dst->enable_background = src->enable_background;
-        dst->adobe_blend = src->adobe_blend;
         dst->opacity = src->opacity;
         dst->filter = src->filter;
         dst->comp_op = src->comp_op;
@@ -475,34 +473,7 @@ rsvg_parse_style_pair (RsvgHandle * ctx,
         state->has_flood_opacity = TRUE;
     } else if (g_str_equal (name, "filter"))
         state->filter = rsvg_filter_parse (ctx->priv->defs, value);
-    else if (g_str_equal (name, "a:adobe-blending-mode")) {
-        if (g_str_equal (value, "normal"))
-            state->adobe_blend = 0;
-        else if (g_str_equal (value, "multiply"))
-            state->adobe_blend = 1;
-        else if (g_str_equal (value, "screen"))
-            state->adobe_blend = 2;
-        else if (g_str_equal (value, "darken"))
-            state->adobe_blend = 3;
-        else if (g_str_equal (value, "lighten"))
-            state->adobe_blend = 4;
-        else if (g_str_equal (value, "softlight"))
-            state->adobe_blend = 5;
-        else if (g_str_equal (value, "hardlight"))
-            state->adobe_blend = 6;
-        else if (g_str_equal (value, "colordodge"))
-            state->adobe_blend = 7;
-        else if (g_str_equal (value, "colorburn"))
-            state->adobe_blend = 8;
-        else if (g_str_equal (value, "overlay"))
-            state->adobe_blend = 9;
-        else if (g_str_equal (value, "exclusion"))
-            state->adobe_blend = 10;
-        else if (g_str_equal (value, "difference"))
-            state->adobe_blend = 11;
-        else
-            state->adobe_blend = 0;
-    } else if (g_str_equal (name, "mask"))
+    else if (g_str_equal (name, "mask"))
         state->mask = rsvg_mask_parse (ctx->priv->defs, value);
     else if (g_str_equal (name, "clip-path")) {
         state->clip_path_ref = rsvg_clip_path_parse (ctx->priv->defs, value);
@@ -856,7 +827,6 @@ rsvg_lookup_parse_style_pair (RsvgHandle * ctx, RsvgState * state,
 void
 rsvg_parse_style_pairs (RsvgHandle * ctx, RsvgState * state, RsvgPropertyBag * atts)
 {
-    rsvg_lookup_parse_style_pair (ctx, state, "a:adobe-blending-mode", atts);
     rsvg_lookup_parse_style_pair (ctx, state, "clip-path", atts);
     rsvg_lookup_parse_style_pair (ctx, state, "clip-rule", atts);
     rsvg_lookup_parse_style_pair (ctx, state, "color", atts);
