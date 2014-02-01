@@ -795,14 +795,18 @@ rsvg_parse_style_pair (RsvgHandle * ctx,
                 state->dash.n_dash = 0;
             }
         } else {
-            gchar **dashes = g_strsplit (value, ",", -1);
+            gchar **dashes = g_strsplit_set (value, ", ", -1);
             if (NULL != dashes) {
-                gint n_dashes, i;
+                gint n_dashes, i, j;
                 gboolean is_even = FALSE;
                 gdouble total = 0;
 
                 /* count the #dashes */
-                for (n_dashes = 0; dashes[n_dashes] != NULL; n_dashes++);
+                n_dashes = 0;
+                for (i = 0; dashes[i] != NULL; i++) {
+                    if (*dashes[i] != '\0')
+                        n_dashes++;
+                }
 
                 is_even = (n_dashes % 2 == 0);
                 state->dash.n_dash = (is_even ? n_dashes : n_dashes * 2);
@@ -811,14 +815,20 @@ rsvg_parse_style_pair (RsvgHandle * ctx,
                 /* TODO: handle negative value == error case */
 
                 /* the even and base case */
-                for (i = 0; i < n_dashes; i++) {
-                    state->dash.dash[i] = g_ascii_strtod (dashes[i], NULL);
-                    total += state->dash.dash[i];
+                i = j = 0;
+                while (dashes[i] != NULL) {
+                    if (*dashes[i] != '\0') {
+                        /* TODO: use _rsvg_css_parse_length */
+                        state->dash.dash[j] = g_ascii_strtod (dashes[i], NULL);
+                        total += state->dash.dash[j];
+                        j++;
+                    }
+                    i++;
                 }
                 /* if an odd number of dashes is found, it gets repeated */
                 if (!is_even)
-                    for (; i < state->dash.n_dash; i++)
-                        state->dash.dash[i] = state->dash.dash[i - n_dashes];
+                    for (; j < state->dash.n_dash; j++)
+                        state->dash.dash[j] = state->dash.dash[j - n_dashes];
 
                 g_strfreev (dashes);
                 /* If the dashes add up to 0, then it should
@@ -1259,11 +1269,10 @@ rsvg_parse_transform (cairo_matrix_t *dst, const char *src)
             case '0': case '1': case '2': case '3': case '4':
             case '5': case '6': case '7': case '8': case '9':
                 args[n_args] = g_ascii_strtod(src, (gchar **) &src);
-                n_args++;
-
                 /* strtod also parses infinity and nan, which are not valid */
                 if (!isfinite (args[n_args]))
                     goto invalid_transform;
+                n_args++;
                 break;
             default:
                 goto invalid_transform;
