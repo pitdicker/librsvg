@@ -1,26 +1,26 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* vim: set sw=4 sts=4 ts=4 expandtab: */
-/* 
+/*
    rsvg-css.c: Parse CSS basic data types.
- 
+
    Copyright (C) 2000 Eazel, Inc.
-  
+
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
    published by the Free Software Foundation; either version 2 of the
    License, or (at your option) any later version.
-  
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Library General Public License for more details.
-  
+
    You should have received a copy of the GNU Library General Public
    License along with this program; if not, write to the
    Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.
-  
-   Authors: Dom Lachowicz <cinamod@hotmail.com> 
+
+   Authors: Dom Lachowicz <cinamod@hotmail.com>
    Raph Levien <raph@artofcode.com>
 */
 
@@ -59,7 +59,7 @@
  * @w: The Width output
  * @h: The Height output
  *
- * Returns: 
+ * Returns:
  */
 RsvgViewBox
 rsvg_css_parse_vbox (const char *vbox)
@@ -104,8 +104,8 @@ rsvg_css_parse_raw_length (const char *str, gboolean * in,
     double length = 0.0;
     char *p = NULL;
 
-    /* 
-     *  The supported CSS length unit specifiers are: 
+    /*
+     *  The supported CSS length unit specifiers are:
      *  em, ex, px, pt, pc, cm, mm, in, and %
      */
     *percent = FALSE;
@@ -420,7 +420,7 @@ rsvg_css_parse_opacity (const char *str)
 }
 
 /*
-  <angle>: An angle value is a <number>  optionally followed immediately with 
+  <angle>: An angle value is a <number> optionally followed immediately with
   an angle unit identifier. Angle unit identifiers are:
 
     * deg: degrees
@@ -428,7 +428,7 @@ rsvg_css_parse_opacity (const char *str)
     * rad: radians
 
     For properties defined in [CSS2], an angle unit identifier must be provided.
-    For SVG-specific attributes and properties, the angle unit identifier is 
+    For SVG-specific attributes and properties, the angle unit identifier is
     optional. If not provided, the angle value is assumed to be in degrees.
 */
 double
@@ -454,9 +454,9 @@ rsvg_css_parse_angle (const char *str)
 }
 
 /*
-  <frequency>: Frequency values are used with aural properties. The normative 
-  definition of frequency values can be found in [CSS2-AURAL]. A frequency 
-  value is a <number> immediately followed by a frequency unit identifier. 
+  <frequency>: Frequency values are used with aural properties. The normative
+  definition of frequency values can be found in [CSS2-AURAL]. A frequency
+  value is a <number> immediately followed by a frequency unit identifier.
   Frequency unit identifiers are:
 
     * Hz: Hertz
@@ -483,12 +483,12 @@ rsvg_css_parse_frequency (const char *str)
 }
 
 /*
-  <time>: A time value is a <number> immediately followed by a time unit 
+  <time>: A time value is a <number> immediately followed by a time unit
   identifier. Time unit identifiers are:
-  
+
   * ms: milliseconds
   * s: seconds
-  
+
   Time values are used in CSS properties and may not be negative.
 */
 double
@@ -819,8 +819,8 @@ rsvg_xml_noerror (void *data, xmlErrorPtr error)
 {
 }
 
-/* This is quite hacky and not entirely correct, but apparently 
- * libxml2 has NO support for parsing pseudo attributes as defined 
+/* This is quite hacky and not entirely correct, but apparently
+ * libxml2 has NO support for parsing pseudo attributes as defined
  * by the xml-styleheet spec.
  */
 char **

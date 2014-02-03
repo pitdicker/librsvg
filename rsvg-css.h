@@ -45,11 +45,11 @@ G_BEGIN_DECLS
 #define RSVG_ASPECT_RATIO_SLICE (1 << 31)
 
 G_GNUC_INTERNAL
-int	    rsvg_css_parse_aspect_ratio	    (const char *str);
+int     rsvg_css_parse_aspect_ratio     (const char *str);
 /* for some reason this one's public... */
-guint32	    rsvg_css_parse_color        (const char *str, gboolean * inherit);
+guint32     rsvg_css_parse_color        (const char *str, gboolean * inherit);
 G_GNUC_INTERNAL
-guint       rsvg_css_parse_opacity	    (const char *str);
+guint       rsvg_css_parse_opacity      (const char *str);
 G_GNUC_INTERNAL
 double      rsvg_css_parse_angle        (const char *str);
 G_GNUC_INTERNAL
@@ -61,19 +61,19 @@ PangoStyle   rsvg_css_parse_font_style      (const char *str, gboolean * inherit
 G_GNUC_INTERNAL
 PangoVariant rsvg_css_parse_font_variant    (const char *str, gboolean * inherit);
 G_GNUC_INTERNAL
-PangoWeight	 rsvg_css_parse_font_weight	    (const char *str, gboolean * inherit);
+PangoWeight  rsvg_css_parse_font_weight     (const char *str, gboolean * inherit);
 G_GNUC_INTERNAL
 PangoStretch rsvg_css_parse_font_stretch    (const char *str, gboolean * inherit);
 G_GNUC_INTERNAL
-const char  *rsvg_css_parse_font_family	    (const char *str, gboolean * inherit);
+const char  *rsvg_css_parse_font_family     (const char *str, gboolean * inherit);
 G_GNUC_INTERNAL
-RsvgViewBox	  rsvg_css_parse_vbox           (const char *vbox);
+RsvgViewBox   rsvg_css_parse_vbox           (const char *vbox);
 G_GNUC_INTERNAL
-void          rsvg_css_parse_number_optional_number	(const char *str, double *x, double *y);
+void          rsvg_css_parse_number_optional_number (const char *str, double *x, double *y);
 G_GNUC_INTERNAL
 gchar       **rsvg_css_parse_list           (const char *in_str, guint * out_list_len);
 G_GNUC_INTERNAL
-gdouble	     *rsvg_css_parse_number_list    (const char *in_str, guint * out_list_len);
+gdouble      *rsvg_css_parse_number_list    (const char *in_str, guint * out_list_len);
 G_GNUC_INTERNAL
 gboolean      rsvg_css_parse_overflow       (const char *str, gboolean * inherit);
 G_GNUC_INTERNAL
@@ -81,4 +81,4 @@ char        **rsvg_css_parse_xml_attribute_string   (const char *attribute_strin
 
 G_END_DECLS
 
-#endif  
+#endif
