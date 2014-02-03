@@ -36,7 +36,7 @@
 
 #include "rsvg-css.h"
 
-static RsvgPaintServer *
+RsvgPaintServer *
 rsvg_paint_server_solid (guint32 argb)
 {
     RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
@@ -50,7 +50,7 @@ rsvg_paint_server_solid (guint32 argb)
     return result;
 }
 
-static RsvgPaintServer *
+RsvgPaintServer *
 rsvg_paint_server_solid_current_colour (void)
 {
     RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
@@ -63,7 +63,7 @@ rsvg_paint_server_solid_current_colour (void)
     return result;
 }
 
-static RsvgPaintServer *
+RsvgPaintServer *
 rsvg_paint_server_lin_grad (RsvgLinearGradient * gradient)
 {
     RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
@@ -75,7 +75,7 @@ rsvg_paint_server_lin_grad (RsvgLinearGradient * gradient)
     return result;
 }
 
-static RsvgPaintServer *
+RsvgPaintServer *
 rsvg_paint_server_rad_grad (RsvgRadialGradient * gradient)
 {
     RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
@@ -87,7 +87,7 @@ rsvg_paint_server_rad_grad (RsvgRadialGradient * gradient)
     return result;
 }
 
-static RsvgPaintServer *
+RsvgPaintServer *
 rsvg_paint_server_pattern (RsvgPattern * pattern)
 {
     RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
@@ -98,57 +98,6 @@ rsvg_paint_server_pattern (RsvgPattern * pattern)
     result->core.pattern = pattern;
 
     return result;
-}
-
-/**
- * rsvg_paint_server_parse:
- * @defs: Defs for looking up gradients.
- * @str: The SVG paint specification string to parse.
- *
- * Parses the paint specification @str, creating a new paint server
- * object.
- *
- * Return value: The newly created paint server, or NULL on error.
- **/
-RsvgPaintServer *
-rsvg_paint_server_parse (gboolean * inherit, const RsvgDefs * defs, const char *str,
-                         guint32 current_color)
-{
-    char *name;
-    guint32 argb;
-    if (inherit != NULL)
-        *inherit = 1;
-    if (str == NULL || !strcmp (str, "none"))
-        return NULL;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val == NULL)
-            return NULL;
-        if (RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_LINEAR_GRADIENT)
-            return rsvg_paint_server_lin_grad ((RsvgLinearGradient *) val);
-        else if (RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_RADIAL_GRADIENT)
-            return rsvg_paint_server_rad_grad ((RsvgRadialGradient *) val);
-        else if (RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_PATTERN)
-            return rsvg_paint_server_pattern ((RsvgPattern *) val);
-        else
-            return NULL;
-    } else if (!strcmp (str, "inherit")) {
-        if (inherit != NULL)
-            *inherit = 0;
-        return rsvg_paint_server_solid (0);
-    } else if (!strcmp (str, "currentColor")) {
-        RsvgPaintServer *ps;
-        ps = rsvg_paint_server_solid_current_colour ();
-        return ps;
-    } else {
-        argb = rsvg_css_parse_color (str, inherit);
-        return rsvg_paint_server_solid (argb);
-    }
 }
 
 /**
@@ -213,7 +162,7 @@ rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
             if (!strcmp (value, "currentColor"))
                 is_current_color = TRUE;
 
-        rsvg_parse_style_pairs (ctx, self->state, atts);
+        rsvg_parse_presentation_attr (ctx, self->state, atts);
     }
     self->parent = ctx->priv->currentnode;
     rsvg_state_init (&state);
@@ -287,7 +236,7 @@ rsvg_linear_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
                 grad->obj_bbox = TRUE;
             grad->hasbbox = TRUE;
         }
-        rsvg_parse_style_attrs (ctx, self->state, "linearGradient", NULL, NULL, atts);
+        rsvg_set_presentation_props (ctx, self->state, "linearGradient", NULL, NULL, atts);
     }
 }
 
@@ -371,7 +320,7 @@ rsvg_radial_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
                 grad->obj_bbox = TRUE;
             grad->hasbbox = TRUE;
         }
-        rsvg_parse_style_attrs (ctx, self->state, "radialGradient", NULL, NULL, atts);
+        rsvg_set_presentation_props (ctx, self->state, "radialGradient", NULL, NULL, atts);
     }
 }
 

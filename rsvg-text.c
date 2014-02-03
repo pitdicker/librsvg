@@ -145,7 +145,7 @@ _rsvg_node_text_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "text", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "text", klazz, id, atts);
     }
 }
 
@@ -394,7 +394,7 @@ _rsvg_node_tspan_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * 
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "tspan", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "tspan", klazz, id, atts);
     }
 }
 

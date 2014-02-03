@@ -33,6 +33,8 @@ librsvg_@RSVG_API_MAJOR_VERSION@_la_SOURCES = \
 	rsvg-io.h		\
 	rsvg-paint-server.c 	\
 	rsvg-paint-server.h 	\
+	rsvg-parse-props.c	\
+	rsvg-parse-props.h	\
 	rsvg-path.c 		\
 	rsvg-path.h 		\
 	rsvg-private.h 		\

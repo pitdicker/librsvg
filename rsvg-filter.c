@@ -733,37 +733,10 @@ rsvg_filter_get_in (GString * name, RsvgFilterContext * ctx)
     return rsvg_filter_get_result (name, ctx).surface;
 }
 
-/**
- * rsvg_filter_parse:
- * @defs: a pointer to the hash of definitions
- * @str: a string with the name of the filter to be looked up
- *
- * Looks up an allready created filter.
- *
- * Returns: a pointer to the filter that the name refers to, or NULL
- * if none was found
- **/
-RsvgFilter *
-rsvg_filter_parse (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_FILTER)
-            return (RsvgFilter *) val;
-    }
-    return NULL;
-}
-
 static void
 rsvg_filter_set_args (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilter *filter;
 
     filter = (RsvgFilter *) self;
@@ -789,8 +762,14 @@ rsvg_filter_set_args (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
             filter->width = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             filter->height = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "filter", klazz, id, atts);
     }
 }
 
@@ -1003,12 +982,12 @@ rsvg_filter_primitive_blend_free (RsvgNode * self)
 }
 
 static void
-rsvg_filter_primitive_blend_set_atts (RsvgNode * node, RsvgHandle * ctx, RsvgPropertyBag * atts)
+rsvg_filter_primitive_blend_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveBlend *filter;
 
-    filter = (RsvgFilterPrimitiveBlend *) node;
+    filter = (RsvgFilterPrimitiveBlend *) self;
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "mode"))) {
@@ -1037,8 +1016,14 @@ rsvg_filter_primitive_blend_set_atts (RsvgNode * node, RsvgHandle * ctx, RsvgPro
             filter->super.width = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             filter->super.height = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feBlend", klazz, id, atts);
     }
 }
 
@@ -1220,15 +1205,14 @@ static void
 rsvg_filter_primitive_convolve_matrix_set_atts (RsvgNode * self,
                                                 RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
+    const char *klazz = NULL, *id = NULL, *value;
+    RsvgFilterPrimitiveConvolveMatrix *filter;
     gint i, j;
     guint listlen = 0;
-    const char *value;
-    gboolean has_target_x, has_target_y;
-    RsvgFilterPrimitiveConvolveMatrix *filter;
+    gboolean has_target_x = 0;
+    gboolean has_target_y = 0;
 
     filter = (RsvgFilterPrimitiveConvolveMatrix *) self;
-    has_target_x = 0;
-    has_target_y = 0;
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "in")))
@@ -1282,8 +1266,14 @@ rsvg_filter_primitive_convolve_matrix_set_atts (RsvgNode * self,
             else
                 filter->edgemode = 0;
         }
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feConvolveMatrix", klazz, id, atts);
     }
 
     if ((gint) listlen != filter->orderx * filter->ordery)
@@ -1532,7 +1522,7 @@ static void
 rsvg_filter_primitive_gaussian_blur_set_atts (RsvgNode * self,
                                               RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveGaussianBlur *filter;
 
     filter = (RsvgFilterPrimitiveGaussianBlur *) self;
@@ -1552,8 +1542,14 @@ rsvg_filter_primitive_gaussian_blur_set_atts (RsvgNode * self,
             filter->super.height = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "stdDeviation")))
             rsvg_css_parse_number_optional_number (value, &filter->sdx, &filter->sdy);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "filter", klazz, id, atts);
     }
 }
 
@@ -1676,7 +1672,7 @@ rsvg_filter_primitive_offset_free (RsvgNode * self)
 static void
 rsvg_filter_primitive_offset_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveOffset *filter;
 
     filter = (RsvgFilterPrimitiveOffset *) self;
@@ -1698,8 +1694,14 @@ rsvg_filter_primitive_offset_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPr
             filter->dx = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "dy")))
             filter->dy = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feOffset", klazz, id, atts);
     }
 }
 
@@ -1781,7 +1783,7 @@ rsvg_filter_primitive_merge_free (RsvgNode * self)
 static void
 rsvg_filter_primitive_merge_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveMerge *filter;
 
     filter = (RsvgFilterPrimitiveMerge *) self;
@@ -1797,8 +1799,14 @@ rsvg_filter_primitive_merge_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
             filter->super.width = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             filter->super.height = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feMerge", klazz, id, atts);
     }
 }
 
@@ -1981,14 +1989,12 @@ static void
 rsvg_filter_primitive_colour_matrix_set_atts (RsvgNode * self, RsvgHandle * ctx,
                                               RsvgPropertyBag * atts)
 {
-    gint type;
-    guint listlen = 0;
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveColourMatrix *filter;
+    gint type = 0;
+    guint listlen = 0;
 
     filter = (RsvgFilterPrimitiveColourMatrix *) self;
-
-    type = 0;
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "in")))
@@ -2023,8 +2029,14 @@ rsvg_filter_primitive_colour_matrix_set_atts (RsvgNode * self, RsvgHandle * ctx,
             else
                 type = 0;
         }
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feColorMatrix", klazz, id, atts);
     }
 
     if (type == 0) {
@@ -2298,7 +2310,7 @@ static void
 rsvg_filter_primitive_component_transfer_set_atts (RsvgNode * self, RsvgHandle * ctx,
                                                    RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveComponentTransfer *filter;
 
     filter = (RsvgFilterPrimitiveComponentTransfer *) self;
@@ -2316,8 +2328,14 @@ rsvg_filter_primitive_component_transfer_set_atts (RsvgNode * self, RsvgHandle *
             filter->super.width = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             filter->super.height = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, " feComponentTransfer", klazz, id, atts);
     }
 }
 
@@ -2517,7 +2535,7 @@ rsvg_filter_primitive_erode_free (RsvgNode * self)
 static void
 rsvg_filter_primitive_erode_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveErode *filter;
 
     filter = (RsvgFilterPrimitiveErode *) self;
@@ -2544,8 +2562,14 @@ rsvg_filter_primitive_erode_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
             else if (!strcmp (value, "dilate"))
                 filter->mode = 1;
         }
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feMorphology", klazz, id, atts);
     }
 }
 
@@ -2745,7 +2769,7 @@ rsvg_filter_primitive_composite_free (RsvgNode * self)
 static void
 rsvg_filter_primitive_composite_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveComposite *filter;
 
     filter = (RsvgFilterPrimitiveComposite *) self;
@@ -2787,8 +2811,14 @@ rsvg_filter_primitive_composite_set_atts (RsvgNode * self, RsvgHandle * ctx, Rsv
             filter->k3 = g_ascii_strtod (value, NULL) * 255.;
         if ((value = rsvg_property_bag_lookup (atts, "k4")))
             filter->k4 = g_ascii_strtod (value, NULL) * 255.;
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feComposite", klazz, id, atts);
     }
 }
 
@@ -2882,8 +2912,10 @@ rsvg_filter_primitive_flood_free (RsvgNode * self)
 static void
 rsvg_filter_primitive_flood_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value, *id = NULL;
-    RsvgFilterPrimitive *filter = (RsvgFilterPrimitive *) self;
+    const char *klazz = NULL, *id = NULL, *value;
+    RsvgFilterPrimitive *filter;
+
+    filter = (RsvgFilterPrimitive *) self;
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "result")))
@@ -2896,9 +2928,14 @@ rsvg_filter_primitive_flood_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
             filter->width = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             filter->height = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
-            rsvg_defs_register_name (ctx->priv->defs, id = value, &filter->super);
-        rsvg_parse_style_attrs (ctx, self->state, "feFlood", NULL, id, atts);
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
+            rsvg_defs_register_name (ctx->priv->defs, value, &filter->super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feFlood", klazz, id, atts);
     }
 }
 
@@ -3065,7 +3102,7 @@ static void
 rsvg_filter_primitive_displacement_map_set_atts (RsvgNode * self, RsvgHandle * ctx,
                                                  RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveDisplacementMap *filter;
 
     filter = (RsvgFilterPrimitiveDisplacementMap *) self;
@@ -3091,8 +3128,14 @@ rsvg_filter_primitive_displacement_map_set_atts (RsvgNode * self, RsvgHandle * c
             filter->yChannelSelector = (value)[0];
         if ((value = rsvg_property_bag_lookup (atts, "scale")))
             filter->scale = g_ascii_strtod (value, NULL);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feDisplacementMap", klazz, id, atts);
     }
 }
 
@@ -3447,7 +3490,7 @@ static void
 rsvg_filter_primitive_turbulence_set_atts (RsvgNode * self, RsvgHandle * ctx,
                                            RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveTurbulence *filter;
 
     filter = (RsvgFilterPrimitiveTurbulence *) self;
@@ -3475,8 +3518,14 @@ rsvg_filter_primitive_turbulence_set_atts (RsvgNode * self, RsvgHandle * ctx,
             filter->bDoStitching = (!strcmp (value, "stitch"));
         if ((value = rsvg_property_bag_lookup (atts, "type")))
             filter->bFractalSum = (!strcmp (value, "fractalNoise"));
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feTurbulence", klazz, id, atts);
     }
 }
 
@@ -3682,7 +3731,7 @@ rsvg_filter_primitive_image_free (RsvgNode * self)
 static void
 rsvg_filter_primitive_image_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveImage *filter;
 
     filter = (RsvgFilterPrimitiveImage *) self;
@@ -3705,9 +3754,15 @@ rsvg_filter_primitive_image_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
             filter->super.width = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             filter->super.height = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
-    }
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feImage", klazz, id, atts);
+   }
 }
 
 RsvgNode *
@@ -4080,32 +4135,40 @@ static void
 rsvg_node_light_source_set_atts (RsvgNode * self,
                                  RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    RsvgNodeLightSource *data;
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
+    RsvgNodeLightSource *filter;
 
-    data = (RsvgNodeLightSource *) self;
+    filter = (RsvgNodeLightSource *) self;
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "azimuth")))
-            data->azimuth = rsvg_css_parse_angle (value) / 180.0 * M_PI;
+            filter->azimuth = rsvg_css_parse_angle (value) / 180.0 * M_PI;
         if ((value = rsvg_property_bag_lookup (atts, "elevation")))
-            data->elevation = rsvg_css_parse_angle (value) / 180.0 * M_PI;
+            filter->elevation = rsvg_css_parse_angle (value) / 180.0 * M_PI;
         if ((value = rsvg_property_bag_lookup (atts, "limitingConeAngle")))
-            data->limitingconeAngle = rsvg_css_parse_angle (value) / 180.0 * M_PI;
+            filter->limitingconeAngle = rsvg_css_parse_angle (value) / 180.0 * M_PI;
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            data->x = data->pointsAtX = _rsvg_css_parse_length (value);
+            filter->x = filter->pointsAtX = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            data->y = data->pointsAtX = _rsvg_css_parse_length (value);
+            filter->y = filter->pointsAtX = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "z")))
-            data->z = data->pointsAtX = _rsvg_css_parse_length (value);
+            filter->z = filter->pointsAtX = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "pointsAtX")))
-            data->pointsAtX = _rsvg_css_parse_length (value);
+            filter->pointsAtX = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "pointsAtY")))
-            data->pointsAtY = _rsvg_css_parse_length (value);
+            filter->pointsAtY = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "pointsAtZ")))
-            data->pointsAtZ = _rsvg_css_parse_length (value);
+            filter->pointsAtZ = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "specularExponent")))
-            data->specularExponent = g_ascii_strtod (value, NULL);
+            filter->specularExponent = g_ascii_strtod (value, NULL);
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
+            rsvg_defs_register_name (ctx->priv->defs, value, &filter->super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feLight", klazz, id, atts);
     }
 }
 
@@ -4263,7 +4326,7 @@ static void
 rsvg_filter_primitive_diffuse_lighting_set_atts (RsvgNode * self, RsvgHandle * ctx,
                                                  RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveDiffuseLighting *filter;
 
     filter = (RsvgFilterPrimitiveDiffuseLighting *) self;
@@ -4290,8 +4353,14 @@ rsvg_filter_primitive_diffuse_lighting_set_atts (RsvgNode * self, RsvgHandle * c
             filter->diffuseConstant = g_ascii_strtod (value, NULL);
         if ((value = rsvg_property_bag_lookup (atts, "surfaceScale")))
             filter->surfaceScale = g_ascii_strtod (value, NULL);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feDiffuseLighting", klazz, id, atts);
     }
 }
 
@@ -4454,7 +4523,7 @@ static void
 rsvg_filter_primitive_specular_lighting_set_atts (RsvgNode * self, RsvgHandle * ctx,
                                                   RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveSpecularLighting *filter;
 
     filter = (RsvgFilterPrimitiveSpecularLighting *) self;
@@ -4480,8 +4549,14 @@ rsvg_filter_primitive_specular_lighting_set_atts (RsvgNode * self, RsvgHandle * 
             filter->specularExponent = g_ascii_strtod (value, NULL);
         if ((value = rsvg_property_bag_lookup (atts, "surfaceScale")))
             filter->surfaceScale = g_ascii_strtod (value, NULL);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feSpecularLighting", klazz, id, atts);
     }
 }
 
@@ -4590,7 +4665,7 @@ rsvg_filter_primitive_tile_free (RsvgNode * self)
 static void
 rsvg_filter_primitive_tile_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    const char *value;
+    const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveTile *filter;
 
     filter = (RsvgFilterPrimitiveTile *) self;
@@ -4608,8 +4683,14 @@ rsvg_filter_primitive_tile_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgProp
             filter->super.width = _rsvg_css_parse_length (value);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             filter->super.height = _rsvg_css_parse_length (value);
-        if ((value = rsvg_property_bag_lookup (atts, "id")))
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
             rsvg_defs_register_name (ctx->priv->defs, value, &filter->super.super);
+        }
+
+        rsvg_set_presentation_props (ctx, self->state, "feTile", klazz, id, atts);
     }
 }
 

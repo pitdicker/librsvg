@@ -48,8 +48,6 @@ G_GNUC_INTERNAL
 void         rsvg_marker_render     (RsvgMarker * self, gdouble x, gdouble y,
                                      gdouble orient, gdouble linewidth, RsvgDrawingCtx * ctx);
 G_GNUC_INTERNAL
-RsvgNode    *rsvg_marker_parse      (const RsvgDefs * defs, const char *str);
-G_GNUC_INTERNAL
 void         rsvg_render_markers    (RsvgDrawingCtx *ctx, const RSVGPathSegm *path);
 
 G_END_DECLS

@@ -65,7 +65,7 @@ rsvg_mask_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
             klazz = value;
     }
 
-    rsvg_parse_style_attrs (ctx, mask->super.state, "mask", klazz, id, atts);
+    rsvg_set_presentation_props (ctx, mask->super.state, "mask", klazz, id, atts);
 }
 
 RsvgNode *
@@ -102,40 +102,6 @@ rsvg_get_url_string (const char *str)
     return NULL;
 }
 
-RsvgNode *
-rsvg_mask_parse (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_MASK)
-            return val;
-    }
-    return NULL;
-}
-
-RsvgNode *
-rsvg_clip_path_parse (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_CLIP_PATH)
-            return val;
-    }
-    return NULL;
-}
-
 static void
 rsvg_clip_path_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
@@ -159,7 +125,7 @@ rsvg_clip_path_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * at
             klazz = value;
     }
 
-    rsvg_parse_style_attrs (ctx, clip_path->super.state, "clipPath", klazz, id, atts);
+    rsvg_set_presentation_props (ctx, clip_path->super.state, "clipPath", klazz, id, atts);
 }
 
 RsvgNode *

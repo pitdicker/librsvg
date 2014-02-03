@@ -52,9 +52,7 @@ cairo_surface_t *rsvg_filter_render (RsvgFilter *self,
                                      char *channelmap);
 
 G_GNUC_INTERNAL
-RsvgNode    *rsvg_new_filter	    (void);
-G_GNUC_INTERNAL
-RsvgFilter  *rsvg_filter_parse	    (const RsvgDefs * defs, const char *str);
+RsvgNode    *rsvg_new_filter                                (void);
 G_GNUC_INTERNAL
 RsvgNode    *rsvg_new_filter_primitive_blend                (void);
 G_GNUC_INTERNAL
@@ -88,7 +86,7 @@ RsvgNode    *rsvg_new_filter_primitive_image                (void);
 G_GNUC_INTERNAL
 RsvgNode    *rsvg_new_filter_primitive_diffuse_lighting	    (void);
 G_GNUC_INTERNAL
-RsvgNode    *rsvg_new_node_light_source	                    (char type);
+RsvgNode    *rsvg_new_node_light_source                     (char type);
 G_GNUC_INTERNAL
 RsvgNode    *rsvg_new_filter_primitive_specular_lighting    (void);
 G_GNUC_INTERNAL

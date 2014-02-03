@@ -147,7 +147,7 @@ rsvg_node_group_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "g", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "g", klazz, id, atts);
     }
 }
 
@@ -372,7 +372,7 @@ _rsvg_node_svg_apply_atts (RsvgNodeSvg * self, RsvgHandle * ctx)
             klazz = value;
         if ((value = rsvg_property_bag_lookup (self->atts, "id")))
             id = value;
-        rsvg_parse_style_attrs (ctx, ((RsvgNode *)self)->state, "svg", klazz, id, self->atts);
+        rsvg_set_presentation_props (ctx, ((RsvgNode *)self)->state, "svg", klazz, id, self->atts);
     }
 }
 
@@ -432,7 +432,7 @@ rsvg_node_use_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * att
         }
         if ((value = rsvg_property_bag_lookup (atts, "xlink:href")))
             rsvg_defs_add_resolver (ctx->priv->defs, &use->link, value);
-        rsvg_parse_style_attrs (ctx, self->state, "use", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "use", klazz, id, atts);
     }
 
 }
@@ -472,7 +472,7 @@ rsvg_node_symbol_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * 
         if ((value = rsvg_property_bag_lookup (atts, "preserveAspectRatio")))
             symbol->preserve_aspect_ratio = rsvg_css_parse_aspect_ratio (value);
 
-        rsvg_parse_style_attrs (ctx, self->state, "symbol", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "symbol", klazz, id, atts);
     }
 
 }

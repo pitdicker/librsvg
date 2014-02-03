@@ -78,7 +78,7 @@ _rsvg_node_rect_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "rect", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "rect", klazz, id, atts);
     }
 }
 
@@ -205,7 +205,7 @@ _rsvg_node_circle_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag *
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "circle", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "circle", klazz, id, atts);
     }
 }
 
@@ -283,7 +283,7 @@ _rsvg_node_ellipse_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag 
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "ellipse", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "ellipse", klazz, id, atts);
     }
 }
 
@@ -362,7 +362,7 @@ _rsvg_node_line_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "line", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "line", klazz, id, atts);
     }
 }
 
@@ -434,9 +434,9 @@ _rsvg_node_poly_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state,
-                                RSVG_NODE_TYPE (self) == RSVG_NODE_TYPE_POLYLINE ? "polyline" : "polygon",
-                                klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state,
+                                     RSVG_NODE_TYPE (self) == RSVG_NODE_TYPE_POLYLINE ? "polyline" : "polygon",
+                                     klazz, id, atts);
     }
 
 }
@@ -602,7 +602,7 @@ rsvg_node_path_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * at
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         }
 
-        rsvg_parse_style_attrs (ctx, self->state, "path", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "path", klazz, id, atts);
     }
 }
 

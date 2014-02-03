@@ -62,6 +62,20 @@ typedef enum {
     RSVG_ENABLE_BACKGROUND_NEW
 } RsvgEnableBackgroundType;
 
+enum {
+    SHAPE_RENDERING_AUTO = CAIRO_ANTIALIAS_DEFAULT,
+    SHAPE_RENDERING_OPTIMIZE_SPEED = CAIRO_ANTIALIAS_NONE,
+    SHAPE_RENDERING_CRISP_EDGES = CAIRO_ANTIALIAS_NONE,
+    SHAPE_RENDERING_GEOMETRIC_PRECISION = CAIRO_ANTIALIAS_DEFAULT
+};
+
+enum {
+    TEXT_RENDERING_AUTO = CAIRO_ANTIALIAS_DEFAULT,
+    TEXT_RENDERING_OPTIMIZE_SPEED = CAIRO_ANTIALIAS_NONE,
+    TEXT_RENDERING_OPTIMIZE_LEGIBILITY = CAIRO_ANTIALIAS_DEFAULT,
+    TEXT_RENDERING_GEOMETRIC_PRECISION = CAIRO_ANTIALIAS_DEFAULT
+};
+
 /* enums and data structures are ABI compatible with libart */
 
 typedef struct _RsvgVpathDash RsvgVpathDash;
@@ -185,9 +199,16 @@ struct _RsvgState {
     GHashTable *styles;
 };
 
+typedef struct _StyleValueData {
+    gchar *value;
+    gboolean important;
+} StyleValueData;
+
 G_GNUC_INTERNAL
 RsvgState *rsvg_state_new (void);
 
+G_GNUC_INTERNAL
+StyleValueData *style_value_data_new (const gchar *value, gboolean important);
 G_GNUC_INTERNAL
 void rsvg_state_init        (RsvgState * state);
 G_GNUC_INTERNAL
@@ -208,14 +229,14 @@ G_GNUC_INTERNAL
 void rsvg_state_free_all    (RsvgState * state);
 
 G_GNUC_INTERNAL
-void rsvg_parse_style_pairs (RsvgHandle * ctx, RsvgState * state, RsvgPropertyBag * atts);
+void rsvg_parse_presentation_attr (RsvgHandle * ctx, RsvgState * state, RsvgPropertyBag * atts);
 G_GNUC_INTERNAL
-void rsvg_parse_style	    (RsvgHandle * ctx, RsvgState * state, const char *str);
+void rsvg_parse_style             (RsvgHandle * ctx, RsvgState * state, const char *str);
 G_GNUC_INTERNAL
-void rsvg_parse_cssbuffer   (RsvgHandle * ctx, const char *buff, size_t buflen);
+void rsvg_parse_cssbuffer         (RsvgHandle * ctx, const char *buff, size_t buflen);
 G_GNUC_INTERNAL
-void rsvg_parse_style_attrs (RsvgHandle * ctx, RsvgState * state, const char *tag,
-                             const char *klazz, const char *id, RsvgPropertyBag * atts);
+void rsvg_set_presentation_props  (RsvgHandle * ctx, RsvgState * state, const char *tag,
+                                   const char *klazz, const char *id, RsvgPropertyBag * atts);
 
 G_GNUC_INTERNAL
 gdouble rsvg_viewport_percentage (gdouble width, gdouble height);
@@ -236,7 +257,7 @@ G_GNUC_INTERNAL
 RsvgState *rsvg_current_state   (RsvgDrawingCtx * ctx);
 
 G_GNUC_INTERNAL
-void rsvg_state_reinherit_top	(RsvgDrawingCtx * ctx, RsvgState * state, int dominate);
+void rsvg_state_reinherit_top   (RsvgDrawingCtx * ctx, RsvgState * state, int dominate);
 
 G_GNUC_INTERNAL
 void rsvg_state_reconstruct	(RsvgState * state, RsvgNode * current);

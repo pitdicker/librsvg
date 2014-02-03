@@ -76,7 +76,7 @@ rsvg_node_marker_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * 
         }
         if ((value = rsvg_property_bag_lookup (atts, "preserveAspectRatio")))
             marker->preserve_aspect_ratio = rsvg_css_parse_aspect_ratio (value);
-        rsvg_parse_style_attrs (ctx, self->state, "marker", klazz, id, atts);
+        rsvg_set_presentation_props (ctx, self->state, "marker", klazz, id, atts);
     }
 }
 
@@ -180,23 +180,6 @@ rsvg_marker_render (RsvgMarker * self, gdouble x, gdouble y, gdouble orient, gdo
     rsvg_state_pop (ctx);
     if (self->vbox.active)
         _rsvg_pop_view_box (ctx);
-}
-
-RsvgNode *
-rsvg_marker_parse (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_MARKER)
-            return val;
-    }
-    return NULL;
 }
 
 static double

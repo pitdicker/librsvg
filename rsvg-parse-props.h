@@ -1,9 +1,9 @@
 /* -*- Mode: C; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* vim: set sw=4 sts=4 ts=4 expandtab: */
 /*
-   rsvg-mask.h : Provides Masks
+   rsvg-parse-props.h: Parse SVG presentation properties
 
-   Copyright (C) 2004 Caleb Moore
+   Copyright (C) 2014 Paul Dicker <pitdicker@gmail.com>
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
@@ -19,45 +19,29 @@
    License along with this program; if not, write to the
    Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.
-
-   Author: Caleb Moore <calebmm@tpg.com.au>
 */
 
-#ifndef RSVG_MASK_H
-#define RSVG_MASK_H
+#ifndef RSVG_PARSE_PROPS_H
+#define RSVG_PARSE_PROPS_H
 
+#include <cairo.h>
 #include "rsvg.h"
-#include "rsvg-defs.h"
-#include "rsvg-css.h"
 #include "rsvg-styles.h"
-#include "rsvg-shapes.h"
-#include <libxml/SAX.h>
 
-G_BEGIN_DECLS 
-
-typedef RsvgCoordUnits RsvgMaskUnits;
-
-typedef struct _RsvgMask RsvgMask;
-
-struct _RsvgMask {
-    RsvgNode super;
-    RsvgLength x, y, width, height;
-    RsvgMaskUnits maskunits;
-    RsvgMaskUnits contentunits;
-};
+G_BEGIN_DECLS
 
 G_GNUC_INTERNAL
-RsvgNode *rsvg_new_mask	    (void);
-
-typedef struct _RsvgClipPath RsvgClipPath;
-
-struct _RsvgClipPath {
-    RsvgNode super;
-    RsvgCoordUnits units;
-};
-
+RsvgPaintServer * rsvg_parse_paint_server (gboolean * inherit,
+                                           const RsvgDefs * defs,
+                                           const char *str,
+                                           guint32 current_color);
 G_GNUC_INTERNAL
-RsvgNode *rsvg_new_clip_path	(void);
+void rsvg_parse_prop (RsvgHandle * ctx,
+                      RsvgState * state,
+                      const gchar * name,
+                      const gchar * value,
+                      gboolean important);
 
 G_END_DECLS
-#endif
+
+#endif                          /* RSVG_PARSE_PROPS_H */

@@ -295,7 +295,7 @@ rsvg_css_clip_rgb_percent (const char *s, double max)
     else {
         value = CLAMP (value, 0, max) / max;
     }
-    
+
     return (gint) floor (value * 255 + 0.5);
 }
 
@@ -509,126 +509,6 @@ rsvg_css_parse_time (const char *str)
     return ms;
 }
 
-PangoStyle
-rsvg_css_parse_font_style (const char *str, gboolean * inherit)
-{
-    SETINHERIT ();
-
-    if (str) {
-        if (!strcmp (str, "oblique"))
-            return PANGO_STYLE_OBLIQUE;
-        if (!strcmp (str, "italic"))
-            return PANGO_STYLE_ITALIC;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_STYLE_NORMAL;
-        }
-    }
-    UNSETINHERIT ();
-    return PANGO_STYLE_NORMAL;
-}
-
-PangoVariant
-rsvg_css_parse_font_variant (const char *str, gboolean * inherit)
-{
-    SETINHERIT ();
-
-    if (str) {
-        if (!strcmp (str, "small-caps"))
-            return PANGO_VARIANT_SMALL_CAPS;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_VARIANT_NORMAL;
-        }
-    }
-    UNSETINHERIT ();
-    return PANGO_VARIANT_NORMAL;
-}
-
-PangoWeight
-rsvg_css_parse_font_weight (const char *str, gboolean * inherit)
-{
-    SETINHERIT ();
-    if (str) {
-        if (!strcmp (str, "lighter"))
-            return PANGO_WEIGHT_LIGHT;
-        else if (!strcmp (str, "bold"))
-            return PANGO_WEIGHT_BOLD;
-        else if (!strcmp (str, "bolder"))
-            return PANGO_WEIGHT_ULTRABOLD;
-        else if (!strcmp (str, "100"))
-            return (PangoWeight) 100;
-        else if (!strcmp (str, "200"))
-            return (PangoWeight) 200;
-        else if (!strcmp (str, "300"))
-            return (PangoWeight) 300;
-        else if (!strcmp (str, "400"))
-            return (PangoWeight) 400;
-        else if (!strcmp (str, "500"))
-            return (PangoWeight) 500;
-        else if (!strcmp (str, "600"))
-            return (PangoWeight) 600;
-        else if (!strcmp (str, "700"))
-            return (PangoWeight) 700;
-        else if (!strcmp (str, "800"))
-            return (PangoWeight) 800;
-        else if (!strcmp (str, "900"))
-            return (PangoWeight) 900;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_WEIGHT_NORMAL;
-        }
-    }
-
-    UNSETINHERIT ();
-    return PANGO_WEIGHT_NORMAL;
-}
-
-PangoStretch
-rsvg_css_parse_font_stretch (const char *str, gboolean * inherit)
-{
-    SETINHERIT ();
-
-    if (str) {
-        if (!strcmp (str, "ultra-condensed"))
-            return PANGO_STRETCH_ULTRA_CONDENSED;
-        else if (!strcmp (str, "extra-condensed"))
-            return PANGO_STRETCH_EXTRA_CONDENSED;
-        else if (!strcmp (str, "condensed") || !strcmp (str, "narrower"))       /* narrower not quite correct */
-            return PANGO_STRETCH_CONDENSED;
-        else if (!strcmp (str, "semi-condensed"))
-            return PANGO_STRETCH_SEMI_CONDENSED;
-        else if (!strcmp (str, "semi-expanded"))
-            return PANGO_STRETCH_SEMI_EXPANDED;
-        else if (!strcmp (str, "expanded") || !strcmp (str, "wider"))   /* wider not quite correct */
-            return PANGO_STRETCH_EXPANDED;
-        else if (!strcmp (str, "extra-expanded"))
-            return PANGO_STRETCH_EXTRA_EXPANDED;
-        else if (!strcmp (str, "ultra-expanded"))
-            return PANGO_STRETCH_ULTRA_EXPANDED;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_STRETCH_NORMAL;
-        }
-    }
-    UNSETINHERIT ();
-    return PANGO_STRETCH_NORMAL;
-}
-
-const char *
-rsvg_css_parse_font_family (const char *str, gboolean * inherit)
-{
-    SETINHERIT ();
-
-    if (!str)
-        return NULL;
-    else if (!strcmp (str, "inherit")) {
-        UNSETINHERIT ();
-        return NULL;
-    } else
-        return str;
-}
-
 #if !defined(HAVE_STRTOK_R)
 
 static char *
@@ -800,18 +680,6 @@ rsvg_css_parse_aspect_ratio (const char *str)
     }
 
     return ratio;
-}
-
-gboolean
-rsvg_css_parse_overflow (const char *str, gboolean * inherit)
-{
-    SETINHERIT ();
-    if (!strcmp (str, "visible") || !strcmp (str, "auto"))
-        return 1;
-    if (!strcmp (str, "hidden") || !strcmp (str, "scroll"))
-        return 0;
-    UNSETINHERIT ();
-    return 0;
 }
 
 static void
