@@ -34,7 +34,10 @@
 #include <libxml/SAX.h>
 #include <pango/pango.h>
 
-G_BEGIN_DECLS 
+#define RSVG_DEFAULT_FONT      "Times New Roman"
+#define RSVG_DEFAULT_FONT_SIZE 12.0 /* pt */
+
+G_BEGIN_DECLS
 
 typedef int TextDecoration;
 

@@ -32,10 +32,12 @@
 #include "rsvg-css.h"
 #include "rsvg-paint-server.h"
 
+#define POINTS_PER_INCH (72.0)
 #define SETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = TRUE;} G_STMT_END
 #define UNSETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = FALSE;} G_STMT_END
 
 static const char * rsvg_parse_font_family  (const char *str, gboolean * inherit);
+static RsvgLength   rsvg_parse_font_size    (const char *str);
 static PangoStretch rsvg_parse_font_stretch (const char *str, gboolean * inherit);
 static PangoStyle   rsvg_parse_font_style   (const char *str, gboolean * inherit);
 static PangoVariant rsvg_parse_font_variant (const char *str, gboolean * inherit);
@@ -148,6 +150,52 @@ rsvg_parse_font_family (const char *str, gboolean * inherit)
         return NULL;
     } else
         return str;
+}
+
+static RsvgLength
+rsvg_parse_font_size (const char *str)
+{
+    RsvgLength out;
+
+    /* TODO: inherit */
+
+    /* absolute-size values */
+    out.factor = 'i';
+    out.length = RSVG_DEFAULT_FONT_SIZE / POINTS_PER_INCH;
+    if (g_ascii_strcasecmp (str, "xx-small") == 0) {
+        out.length /= 1.2 * 1.2 * 1.2;
+        return out;
+    } else if (g_ascii_strcasecmp (str, "x-small") == 0) {
+        out.length /= 1.2 * 1.2;
+        return out;
+    } else if (g_ascii_strcasecmp (str, "small") == 0) {
+        out.length /= 1.2;
+        return out;
+    } else if (g_ascii_strcasecmp (str, "medium") == 0) {
+        return out;
+    } else if (g_ascii_strcasecmp (str, "large") == 0) {
+        out.length *= 1.2;
+        return out;
+    } else if (g_ascii_strcasecmp (str, "x-large") == 0) {
+        out.length *= 1.2 * 1.2;
+        return out;
+    } else if (g_ascii_strcasecmp (str, "xx-large") == 0) {
+        out.length *= 1.2 * 1.2 * 1.2;
+        return out;
+    }
+
+    /* relative-size values */
+    out.factor = 'm';
+    if (g_ascii_strcasecmp (str, "larger") == 0) {
+        out.length = 1.2;
+        return out;
+    } else if (g_ascii_strcasecmp (str, "smaller") == 0) {
+        out.length = 1.0 / 1.2;
+        return out;
+    }
+
+    /* normal length */
+    return _rsvg_css_parse_length (str);
 }
 
 static PangoStretch
@@ -405,7 +453,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
         g_free (state->font_family);
         state->font_family = save;
     } else if (g_str_equal (name, "font-size")) {
-        state->font_size = _rsvg_css_parse_length (value);
+        state->font_size = rsvg_parse_font_size (value);
         state->has_font_size = TRUE;
     } else if (g_str_equal (name, "font-size-adjust")) {
         /* TODO */

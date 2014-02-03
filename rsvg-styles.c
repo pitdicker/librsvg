@@ -40,8 +40,6 @@
 
 #include <libcroco/libcroco.h>
 
-#define RSVG_DEFAULT_FONT "Times New Roman"
-
 StyleValueData *
 style_value_data_new (const gchar *value, gboolean important)
 {
