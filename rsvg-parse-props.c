@@ -356,7 +356,8 @@ rsvg_parse_prop (RsvgHandle * ctx,
                  RsvgState * state,
                  const gchar * name,
                  const gchar * value,
-                 gboolean important)
+                 gboolean important,
+                 const RsvgPropSrc prop_src)
 {
     StyleValueData *data;
 

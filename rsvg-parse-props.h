@@ -30,6 +30,11 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+    SVG_ATTRIBUTE,
+    CSS_VALUE
+} RsvgPropSrc;
+
 G_GNUC_INTERNAL
 RsvgPaintServer * rsvg_parse_paint_server (gboolean * inherit,
                                            const RsvgDefs * defs,
@@ -40,7 +45,8 @@ void rsvg_parse_prop (RsvgHandle * ctx,
                       RsvgState * state,
                       const gchar * name,
                       const gchar * value,
-                      gboolean important);
+                      gboolean important,
+                      const RsvgPropSrc prop_src);
 
 G_END_DECLS
 

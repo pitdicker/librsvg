@@ -428,7 +428,7 @@ rsvg_lookup_parse_presentation_attr (RsvgHandle * ctx, RsvgState * state,
     const char *value;
 
     if ((value = rsvg_property_bag_lookup (atts, key)) != NULL)
-        rsvg_parse_prop (ctx, state, key, value, FALSE);
+        rsvg_parse_prop (ctx, state, key, value, FALSE, SVG_ATTRIBUTE);
 }
 
 /* take a pair of the form (fill="#ff00ff") and parse it as a style */
@@ -542,10 +542,8 @@ rsvg_parse_style (RsvgHandle * ctx, RsvgState * state, const char *str)
             gboolean important;
             gchar *style_value = NULL;
             if (parse_style_value (values[1], &style_value, &important))
-                rsvg_parse_prop (ctx, state,
-                                       g_strstrip (values[0]),
-                                       style_value,
-                                       important);
+                rsvg_parse_prop (ctx, state, g_strstrip (values[0]),
+                                 style_value, important, CSS_VALUE);
             g_free (style_value);
         }
         g_strfreev (values);
@@ -977,7 +975,7 @@ static void
 rsvg_apply_css_props (const gchar *key, StyleValueData *value, gpointer user_data)
 {
     StylesData *data = (StylesData *) user_data;
-    rsvg_parse_prop (data->ctx, data->state, key, value->value, value->important);
+    rsvg_parse_prop (data->ctx, data->state, key, value->value, value->important, CSS_VALUE);
 }
 
 static gboolean
