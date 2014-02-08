@@ -479,8 +479,12 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
     cairo_set_miter_limit (cr, state->miter_limit);
     cairo_set_line_cap (cr, (cairo_line_cap_t) state->cap);
     cairo_set_line_join (cr, (cairo_line_join_t) state->join);
-    cairo_set_dash (cr, state->dash.dash, state->dash.n_dash,
-                    _rsvg_css_normalize_length (&state->dash.offset, ctx, 'o'));
+    if (state->has_dash) {
+        double dashoffset = 0.0;
+        if (state->has_dashoffset)
+            dashoffset = _rsvg_css_normalize_length (&state->dash.offset, ctx, 'o');
+        cairo_set_dash (cr, state->dash.dash, state->dash.n_dash, dashoffset);
+    }
 
     path = rsvg_cairo_build_path (rsvg_path, state);
     cairo_append_path (cr, path);

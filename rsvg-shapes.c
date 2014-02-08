@@ -174,7 +174,7 @@ rsvg_new_rect (void)
     _rsvg_node_init (&rect->super, RSVG_NODE_TYPE_RECT);
     rect->super.draw = _rsvg_node_rect_draw;
     rect->super.set_atts = _rsvg_node_rect_set_atts;
-    rect->x = rect->y = rect->w = rect->h = rect->rx = rect->ry = _rsvg_css_parse_length ("0");
+    rect->x = rect->y = rect->w = rect->h = rect->rx = rect->ry = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     rect->got_rx = rect->got_ry = FALSE;
     return &rect->super;
 }
@@ -251,7 +251,7 @@ rsvg_new_circle (void)
     _rsvg_node_init (&circle->super, RSVG_NODE_TYPE_CIRCLE);
     circle->super.draw = _rsvg_node_circle_draw;
     circle->super.set_atts = _rsvg_node_circle_set_atts;
-    circle->cx = circle->cy = circle->r = _rsvg_css_parse_length ("0");
+    circle->cx = circle->cy = circle->r = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     return &circle->super;
 }
 
@@ -330,7 +330,7 @@ rsvg_new_ellipse (void)
     _rsvg_node_init (&ellipse->super, RSVG_NODE_TYPE_ELLIPSE);
     ellipse->super.draw = _rsvg_node_ellipse_draw;
     ellipse->super.set_atts = _rsvg_node_ellipse_set_atts;
-    ellipse->cx = ellipse->cy = ellipse->rx = ellipse->ry = _rsvg_css_parse_length ("0");
+    ellipse->cx = ellipse->cy = ellipse->rx = ellipse->ry = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     return &ellipse->super;
 }
 
@@ -400,7 +400,7 @@ rsvg_new_line (void)
     _rsvg_node_init (&line->super, RSVG_NODE_TYPE_LINE);
     line->super.draw = _rsvg_node_line_draw;
     line->super.set_atts = _rsvg_node_line_set_atts;
-    line->x1 = line->x2 = line->y1 = line->y2 = _rsvg_css_parse_length ("0");
+    line->x1 = line->x2 = line->y1 = line->y2 = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     return &line->super;
 }
 

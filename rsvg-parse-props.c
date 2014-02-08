@@ -32,11 +32,6 @@
 #include "rsvg-css.h"
 #include "rsvg-paint-server.h"
 
-#define POINTS_TO_INCH (1.0 / 72.0)
-#define CM_TO_INCH     (1.0 / 2.54)
-#define MM_TO_INCH     (1.0 / 25.4)
-#define PICA_TO_INCH   (1.0 / 6.0)
-
 #define SETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = TRUE;} G_STMT_END
 #define UNSETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = FALSE;} G_STMT_END
 
@@ -126,32 +121,30 @@ _rsvg_parse_number (const char *str, const char **end, const RsvgNumberFormat fo
 /**
  * _rsvg_parse_length:
  * Parse the basic data type 'length'.
- * If str does not start with a valid length, 0.0px is returned and *end = str.
+ * If str does not start with a valid length, 0.0 is returned and *end = str.
  */
 RsvgLength
 _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_src)
 {
-    guint length;
     RsvgLength out;
     RsvgNumberFormat format;
 
     struct length_units {
         const char *keyword;
-        guint keyword_length;
-        RsvgLength value;
+        RsvgLengthUnit value;
     };
     const struct length_units units[] = {
-        {"%",  1, {0.01, 'p'}},
-        {"cm", 2, {CM_TO_INCH, 'i'}},
-        {"em", 2, {1.0, 'm'}},
-        {"ex", 2, {1.0, 'x'}},
-        {"in", 2, {1.0, 'i'}},
-        {"mm", 2, {MM_TO_INCH, 'i'}},
-        {"pc", 2, {PICA_TO_INCH, 'i'}},
-        {"pt", 2, {POINTS_TO_INCH, 'i'}},
-        {"px", 2, {1.0, '\0'}},
+        {"%",  RSVG_UNIT_PERCENTAGE},
+        {"cm", RSVG_UNIT_CM},
+        {"em", RSVG_UNIT_EMS},
+        {"ex", RSVG_UNIT_EXS},
+        {"in", RSVG_UNIT_IN},
+        {"mm", RSVG_UNIT_MM},
+        {"pc", RSVG_UNIT_PC},
+        {"pt", RSVG_UNIT_PT},
+        {"px", RSVG_UNIT_PX}
     };
-    struct length_units *unit_index;
+    struct length_units *unit;
 
     g_assert (str != NULL);
 
@@ -164,18 +157,18 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
         break;
     }
 
-    length = _rsvg_parse_number (str, end, format);
+    out.length = _rsvg_parse_number (str, end, format);
     if (*end == str) /* invalid number */
-        return (RsvgLength) {0.0, '\0'};
+        return (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN}; /* TODO: will this give problems? */
 
-    if ((unit_index = rsvg_match_keyword (*end, units, prop_src))) {
-        out = unit_index->value;
-        out.length *= length;
-        *end += unit_index->keyword_length;
+    if ((unit = rsvg_match_keyword (*end, units, prop_src))) {
+        out.unit = unit->value;
+        if (out.unit == RSVG_UNIT_PERCENTAGE)
+            *end += 1;
+        else
+            *end += 2;
     } else {
-        /* no unit implies 'px' */
-        out.length = length;
-        out.factor = '\0';
+        out.unit = RSVG_UNIT_NUMBER;
     }
 
     return out;
@@ -323,15 +316,15 @@ rsvg_parse_font_size (const char *str, RsvgLength *result, const RsvgPropSrc pro
         RsvgLength value;
     };
     const struct font_size_keywords keywords[] = {
-        {"large",    {RSVG_DEFAULT_FONT_SIZE * 1.2, '\0'}},
-        {"larger",   {1.2, 'm'}},
-        {"medium",   {RSVG_DEFAULT_FONT_SIZE, '\0'}},
-        {"small",    {RSVG_DEFAULT_FONT_SIZE / 1.2, '\0'}},
-        {"smaller",  {1.0 / 1.2, 'm'}},
-        {"x-large",  {RSVG_DEFAULT_FONT_SIZE * (1.2 * 1.2), '\0'}},
-        {"x-small",  {RSVG_DEFAULT_FONT_SIZE / (1.2 * 1.2), '\0'}},
-        {"xx-large", {RSVG_DEFAULT_FONT_SIZE * (1.2 * 1.2 * 1.2), '\0'}},
-        {"xx-small", {RSVG_DEFAULT_FONT_SIZE / (1.2 * 1.2 * 1.2), '\0'}}
+        {"large",    {RSVG_DEFAULT_FONT_SIZE * 1.2, RSVG_UNIT_PX}},
+        {"larger",   {1.2, RSVG_UNIT_EMS}},
+        {"medium",   {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX}},
+        {"small",    {RSVG_DEFAULT_FONT_SIZE / 1.2, RSVG_UNIT_PX}},
+        {"smaller",  {1.0 / 1.2, RSVG_UNIT_EMS}},
+        {"x-large",  {RSVG_DEFAULT_FONT_SIZE * (1.2 * 1.2), RSVG_UNIT_PX}},
+        {"x-small",  {RSVG_DEFAULT_FONT_SIZE / (1.2 * 1.2), RSVG_UNIT_PX}},
+        {"xx-large", {RSVG_DEFAULT_FONT_SIZE * (1.2 * 1.2 * 1.2), RSVG_UNIT_PX}},
+        {"xx-small", {RSVG_DEFAULT_FONT_SIZE / (1.2 * 1.2 * 1.2), RSVG_UNIT_PX}}
     };
     struct font_size_keywords *keyword;
 
@@ -343,7 +336,7 @@ rsvg_parse_font_size (const char *str, RsvgLength *result, const RsvgPropSrc pro
         /* try normal length values */
         length = _rsvg_parse_length (str, &end, prop_src);
         if (str == end || *end != '\0' ||
-            (prop_src == CSS_VALUE && g_ascii_isdigit(end[-1])) ) {
+            (prop_src == CSS_VALUE && length.unit == RSVG_UNIT_NUMBER && length.length != 0.0) ) {
             printf ("invalid font size: '%s'\n", str); /* TODO: report errors properly */
             return FALSE;
         }
@@ -732,10 +725,11 @@ rsvg_parse_prop (RsvgHandle * ctx,
             }
         }
     } else if (g_str_equal (name, "stroke-dashoffset")) {
-        state->has_dashoffset = TRUE;
-        _rsvg_parse_prop_length (value, &state->dash.offset, prop_src);
-        if (state->dash.offset.length < 0.)
-            state->dash.offset.length = 0.;
+        if (_rsvg_parse_prop_length (value, &state->dash.offset, prop_src)) {
+            state->has_dashoffset = TRUE;
+            if (state->dash.offset.length < 0.)
+                state->dash.offset.length = 0.;
+        }
     } else if (g_str_equal (name, "stroke-linecap")) {
         state->has_cap = TRUE;
         if (g_str_equal (value, "butt"))

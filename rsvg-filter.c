@@ -109,26 +109,28 @@ rsvg_filter_primitive_get_bounds (RsvgFilterPrimitive * self, RsvgFilterContext 
     rsvg_bbox_insert (&box, &otherbox);
 
     if (self != NULL)
-        if (self->x.factor != 'n' || self->y.factor != 'n' ||
-            self->width.factor != 'n' || self->height.factor != 'n') {
+        if (self->x.unit != RSVG_UNIT_UNKNOWN ||
+            self->y.unit != RSVG_UNIT_UNKNOWN ||
+            self->width.unit != RSVG_UNIT_UNKNOWN ||
+            self->height.unit != RSVG_UNIT_UNKNOWN) {
 
             rsvg_bbox_init (&otherbox, &ctx->paffine);
             otherbox.virgin = 0;
             if (ctx->filter->primitiveunits == objectBoundingBox)
                 _rsvg_push_view_box (ctx->ctx, 1., 1.);
-            if (self->x.factor != 'n')
+            if (self->x.unit != RSVG_UNIT_UNKNOWN)
                 otherbox.rect.x = _rsvg_css_normalize_length (&self->x, ctx->ctx, 'h');
             else
                 otherbox.rect.x = 0;
-            if (self->y.factor != 'n')
+            if (self->y.unit != RSVG_UNIT_UNKNOWN)
                 otherbox.rect.y = _rsvg_css_normalize_length (&self->y, ctx->ctx, 'v');
             else
                 otherbox.rect.y = 0;
-            if (self->width.factor != 'n')
+            if (self->width.unit != RSVG_UNIT_UNKNOWN)
                 otherbox.rect.width = _rsvg_css_normalize_length (&self->width, ctx->ctx, 'h');
             else
                 otherbox.rect.width = ctx->ctx->vb.rect.width;
-            if (self->height.factor != 'n')
+            if (self->height.unit != RSVG_UNIT_UNKNOWN)
                 otherbox.rect.height = _rsvg_css_normalize_length (&self->height, ctx->ctx, 'v');
             else
                 otherbox.rect.height = ctx->ctx->vb.rect.height;
@@ -788,10 +790,8 @@ rsvg_new_filter (void)
     _rsvg_node_init (&filter->super, RSVG_NODE_TYPE_FILTER);
     filter->filterunits = objectBoundingBox;
     filter->primitiveunits = userSpaceOnUse;
-    filter->x = _rsvg_css_parse_length ("-10%");
-    filter->y = _rsvg_css_parse_length ("-10%");
-    filter->width = _rsvg_css_parse_length ("120%");
-    filter->height = _rsvg_css_parse_length ("120%");
+    filter->x = filter->y = (RsvgLength) {-10.0, RSVG_UNIT_PERCENTAGE};
+    filter->width = filter->height = (RsvgLength) {120.0, RSVG_UNIT_PERCENTAGE};
     filter->super.set_atts = rsvg_filter_set_args;
     return (RsvgNode *) filter;
 }
@@ -1038,8 +1038,8 @@ rsvg_new_filter_primitive_blend (void)
     filter->super.in = g_string_new ("none");
     filter->in2 = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->super.render = &rsvg_filter_primitive_blend_render;
     filter->super.super.free = &rsvg_filter_primitive_blend_free;
     filter->super.super.set_atts = rsvg_filter_primitive_blend_set_atts;
@@ -1305,8 +1305,8 @@ rsvg_new_filter_primitive_convolve_matrix (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_CONVOLVE_MATRIX);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->KernelMatrix = NULL;
     filter->divisor = 0;
     filter->bias = 0;
@@ -1562,8 +1562,8 @@ rsvg_new_filter_primitive_gaussian_blur (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_GAUSSIAN_BLUR);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->sdx = 0;
     filter->sdy = 0;
     filter->super.render = &rsvg_filter_primitive_gaussian_blur_render;
@@ -1714,10 +1714,9 @@ rsvg_new_filter_primitive_offset (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_OFFSET);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
-    filter->dy = _rsvg_css_parse_length ("0");
-    filter->dx = _rsvg_css_parse_length ("0");
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
+    filter->dy = filter->dx = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     filter->super.render = &rsvg_filter_primitive_offset_render;
     filter->super.super.free = &rsvg_filter_primitive_offset_free;
     filter->super.super.set_atts = rsvg_filter_primitive_offset_set_atts;
@@ -1818,8 +1817,8 @@ rsvg_new_filter_primitive_merge (void)
     filter = g_new (RsvgFilterPrimitiveMerge, 1);
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_MERGE);
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->super.render = &rsvg_filter_primitive_merge_render;
     filter->super.super.free = &rsvg_filter_primitive_merge_free;
 
@@ -2111,8 +2110,8 @@ rsvg_new_filter_primitive_colour_matrix (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_COLOUR_MATRIX);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->KernelMatrix = NULL;
     filter->super.render = &rsvg_filter_primitive_colour_matrix_render;
     filter->super.super.free = &rsvg_filter_primitive_colour_matrix_free;
@@ -2349,8 +2348,8 @@ rsvg_new_filter_primitive_component_transfer (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_COMPONENT_TRANSFER);
     filter->super.result = g_string_new ("none");
     filter->super.in = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->super.render = &rsvg_filter_primitive_component_transfer_render;
 
     filter->super.super.set_atts = rsvg_filter_primitive_component_transfer_set_atts;
@@ -2582,8 +2581,8 @@ rsvg_new_filter_primitive_erode (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_ERODE);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->rx = 0;
     filter->ry = 0;
     filter->mode = 0;
@@ -2833,8 +2832,8 @@ rsvg_new_filter_primitive_composite (void)
     filter->super.in = g_string_new ("none");
     filter->in2 = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->k1 = 0;
     filter->k2 = 0;
     filter->k3 = 0;
@@ -2948,7 +2947,8 @@ rsvg_new_filter_primitive_flood (void)
     _rsvg_node_init (&filter->super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_FLOOD);
     filter->in = g_string_new ("none");
     filter->result = g_string_new ("none");
-    filter->x.factor = filter->y.factor = filter->width.factor = filter->height.factor = 'n';
+    filter->x = filter->y = filter->width =
+        filter->height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->render = &rsvg_filter_primitive_flood_render;
     filter->super.free = &rsvg_filter_primitive_flood_free;
     filter->super.set_atts = rsvg_filter_primitive_flood_set_atts;
@@ -3149,8 +3149,8 @@ rsvg_new_filter_primitive_displacement_map (void)
     filter->super.in = g_string_new ("none");
     filter->in2 = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->xChannelSelector = ' ';
     filter->yChannelSelector = ' ';
     filter->scale = 0;
@@ -3538,8 +3538,8 @@ rsvg_new_filter_primitive_turbulence (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_TURBULENCE);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->fBaseFreqX = 0;
     filter->fBaseFreqY = 0;
     filter->nNumOctaves = 1;
@@ -3774,8 +3774,8 @@ rsvg_new_filter_primitive_image (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_IMAGE);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->super.render = &rsvg_filter_primitive_image_render;
     filter->super.super.free = &rsvg_filter_primitive_image_free;
     filter->super.super.set_atts = rsvg_filter_primitive_image_set_atts;
@@ -4376,8 +4376,8 @@ rsvg_new_filter_primitive_diffuse_lighting (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_DIFFUSE_LIGHTING);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->surfaceScale = 1;
     filter->diffuseConstant = 1;
     filter->dx = 1;
@@ -4573,8 +4573,8 @@ rsvg_new_filter_primitive_specular_lighting (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_SPECULAR_LIGHTING);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->surfaceScale = 1;
     filter->specularConstant = 1;
     filter->specularExponent = 1;
@@ -4706,8 +4706,8 @@ rsvg_new_filter_primitive_tile (void)
     _rsvg_node_init (&filter->super.super, RSVG_NODE_TYPE_FILTER_PRIMITIVE_TILE);
     filter->super.in = g_string_new ("none");
     filter->super.result = g_string_new ("none");
-    filter->super.x.factor = filter->super.y.factor = filter->super.width.factor =
-        filter->super.height.factor = 'n';
+    filter->super.x = filter->super.y = filter->super.width =
+        filter->super.height = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
     filter->super.render = &rsvg_filter_primitive_tile_render;
     filter->super.super.free = &rsvg_filter_primitive_tile_free;
     filter->super.super.set_atts = rsvg_filter_primitive_tile_set_atts;

@@ -398,10 +398,8 @@ rsvg_new_svg (void)
     _rsvg_node_init (&svg->super, RSVG_NODE_TYPE_SVG);
     svg->vbox.active = FALSE;
     svg->preserve_aspect_ratio = RSVG_ASPECT_RATIO_XMID_YMID;
-    svg->x = _rsvg_css_parse_length ("0");
-    svg->y = _rsvg_css_parse_length ("0");
-    svg->w = _rsvg_css_parse_length ("100%");
-    svg->h = _rsvg_css_parse_length ("100%");
+    svg->x = svg->y = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
+    svg->w = svg->h = (RsvgLength) {100.0, RSVG_UNIT_PERCENTAGE};
     svg->super.draw = rsvg_node_svg_draw;
     svg->super.free = _rsvg_svg_free;
     svg->super.set_atts = rsvg_node_svg_set_atts;
@@ -446,10 +444,7 @@ rsvg_new_use (void)
     _rsvg_node_init (&use->super, RSVG_NODE_TYPE_USE);
     use->super.draw = rsvg_node_use_draw;
     use->super.set_atts = rsvg_node_use_set_atts;
-    use->x = _rsvg_css_parse_length ("0");
-    use->y = _rsvg_css_parse_length ("0");
-    use->w = _rsvg_css_parse_length ("0");
-    use->h = _rsvg_css_parse_length ("0");
+    use->x = use->y = use->w = use->h = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     use->link = NULL;
     return (RsvgNode *) use;
 }

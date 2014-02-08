@@ -251,8 +251,8 @@ rsvg_new_linear_gradient (void)
     _rsvg_node_init (&grad->super, RSVG_NODE_TYPE_LINEAR_GRADIENT);
     cairo_matrix_init_identity (&grad->affine);
     grad->has_current_color = FALSE;
-    grad->x1 = grad->y1 = grad->y2 = _rsvg_css_parse_length ("0");
-    grad->x2 = _rsvg_css_parse_length ("1");
+    grad->x1 = grad->y1 = grad->y2 = (RsvgLength) {0.0, RSVG_UNIT_NUMBER}; /* TODO: should be 0.0% */
+    grad->x2 = (RsvgLength) {1.0, RSVG_UNIT_NUMBER}; /* TODO: should be 100.0% */
     grad->fallback = NULL;
     grad->obj_bbox = TRUE;
     grad->spread = CAIRO_EXTEND_PAD;
@@ -337,7 +337,7 @@ rsvg_new_radial_gradient (void)
     grad->obj_bbox = TRUE;
     grad->spread = CAIRO_EXTEND_PAD;
     grad->fallback = NULL;
-    grad->cx = grad->cy = grad->r = grad->fx = grad->fy = _rsvg_css_parse_length ("0.5");
+    grad->cx = grad->cy = grad->r = grad->fx = grad->fy = (RsvgLength) {0.5, RSVG_UNIT_NUMBER}; /* TODO: should be 50.0% */
     grad->super.set_atts = rsvg_radial_gradient_set_atts;
     grad->hascx = grad->hascy = grad->hasfx = grad->hasfy = grad->hasr = grad->hasbbox =
         grad->hasspread = grad->hastransform = FALSE;
@@ -417,7 +417,7 @@ rsvg_new_pattern (void)
     cairo_matrix_init_identity (&pattern->affine);
     pattern->obj_bbox = TRUE;
     pattern->obj_cbbox = FALSE;
-    pattern->x = pattern->y = pattern->width = pattern->height = _rsvg_css_parse_length ("0");
+    pattern->x = pattern->y = pattern->width = pattern->height = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     pattern->fallback = NULL;
     pattern->preserve_aspect_ratio = RSVG_ASPECT_RATIO_XMID_YMID;
     pattern->vbox.active = FALSE;

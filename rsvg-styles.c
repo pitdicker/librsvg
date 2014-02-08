@@ -86,7 +86,7 @@ rsvg_state_init (RsvgState * state)
     state->fill = rsvg_parse_paint_server (NULL, NULL, "#000", 0);
     state->fill_opacity = 0xff;
     state->stroke_opacity = 0xff;
-    state->stroke_width = _rsvg_css_parse_length ("1");
+    state->stroke_width = (RsvgLength) {1.0, RSVG_UNIT_NUMBER};
     state->miter_limit = 4;
     state->cap = CAIRO_LINE_CAP_BUTT;
     state->join = CAIRO_LINE_JOIN_MITER;
@@ -100,7 +100,7 @@ rsvg_state_init (RsvgState * state)
     state->flood_opacity = 255;
 
     state->font_family = g_strdup (RSVG_DEFAULT_FONT);
-    state->font_size = _rsvg_css_parse_length ("12.0");
+    state->font_size = (RsvgLength) {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX};
     state->font_style = PANGO_STYLE_NORMAL;
     state->font_variant = PANGO_VARIANT_NORMAL;
     state->font_weight = PANGO_WEIGHT_NORMAL;
@@ -109,7 +109,7 @@ rsvg_state_init (RsvgState * state)
     state->text_gravity = PANGO_GRAVITY_SOUTH;
     state->unicode_bidi = UNICODE_BIDI_NORMAL;
     state->text_anchor = TEXT_ANCHOR_START;
-    state->letter_spacing = _rsvg_css_parse_length ("0.0");
+    state->letter_spacing = (RsvgLength) {0.0, RSVG_UNIT_PX};
     state->visible = TRUE;
     state->cond_true = TRUE;
     state->filter = NULL;

@@ -43,11 +43,6 @@
 
 #include <libcroco/libcroco.h>
 
-#define POINTS_PER_INCH (72.0)
-#define CM_PER_INCH     (2.54)
-#define MM_PER_INCH     (25.4)
-#define PICA_PER_INCH   (6.0)
-
 #define SETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = TRUE;} G_STMT_END
 #define UNSETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = FALSE;} G_STMT_END
 
@@ -91,150 +86,119 @@ rsvg_css_parse_vbox (const char *vbox)
     }
 }
 
-static double
-rsvg_css_parse_raw_length (const char *str,
-                           gboolean *in, gboolean *percent, gboolean *em,
-                           gboolean *ex)
-{
-    double length = 0.0;
-    char *p = NULL;
-
-    /*
-     *  The supported CSS length unit specifiers are:
-     *  em, ex, px, pt, pc, cm, mm, in, and %
-     */
-    *percent = FALSE;
-    *em = FALSE;
-    *ex = FALSE;
-
-    length = g_ascii_strtod (str, &p);
-
-    if ((length == -HUGE_VAL || length == HUGE_VAL) && (ERANGE == errno)) {
-        /* todo: error condition - figure out how to best represent it */
-        return 0.0;
-    }
-
-    /* test for either pixels or no unit, which is assumed to be pixels */
-    if (p && *p && (strcmp (p, "px") != 0)) {
-        if (!strcmp (p, "pt")) {
-            length /= POINTS_PER_INCH;
-            *in = TRUE;
-        } else if (!strcmp (p, "in"))
-            *in = TRUE;
-        else if (!strcmp (p, "cm")) {
-            length /= CM_PER_INCH;
-            *in = TRUE;
-        } else if (!strcmp (p, "mm")) {
-            length /= MM_PER_INCH;
-            *in = TRUE;
-        } else if (!strcmp (p, "pc")) {
-            length /= PICA_PER_INCH;
-            *in = TRUE;
-        } else if (!strcmp (p, "em"))
-            *em = TRUE;
-        else if (!strcmp (p, "ex"))
-            *ex = TRUE;
-        else if (!strcmp (p, "%")) {
-            *percent = TRUE;
-            length *= 0.01;
-        }
-    }
-
-    return length;
-}
-
-RsvgLength
-_rsvg_css_parse_length (const char *str)
-{
-    RsvgLength out;
-    gboolean percent, em, ex, in;
-    percent = em = ex = in = FALSE;
-
-    out.length = rsvg_css_parse_raw_length (str, &in, &percent, &em, &ex);
-    if (percent)
-        out.factor = 'p';
-    else if (em)
-        out.factor = 'm';
-    else if (ex)
-        out.factor = 'x';
-    else if (in)
-        out.factor = 'i';
-    else
-        out.factor = '\0';
-    return out;
-}
-
 double
 _rsvg_css_normalize_font_size (RsvgState * state, RsvgDrawingCtx * ctx)
 {
     RsvgState *parent;
+    double parent_font_size;
+    double font_size = state->font_size.length;
 
-    switch (state->font_size.factor) {
-    case 'p':
-    case 'm':
-    case 'x':
-        parent = rsvg_state_parent (state);
-        if (parent) {
-            double parent_size;
-            parent_size = _rsvg_css_normalize_font_size (parent, ctx);
-            return state->font_size.length * parent_size;
-        }
+    switch (state->font_size.unit) {
+    case RSVG_UNIT_UNKNOWN:
+        g_assert (state->font_size.unit != RSVG_UNIT_UNKNOWN);
+        return 0.0;
+    case RSVG_UNIT_PERCENTAGE:
+        font_size *= 0.01;
+        break;
+    case RSVG_UNIT_EMS:
+        break;
+    case RSVG_UNIT_EXS:
+        font_size *= 0.5; /* TODO: should use real x-height of font */
         break;
     default:
         return _rsvg_css_normalize_length (&state->font_size, ctx, 'v');
-        break;
     }
 
-    return RSVG_DEFAULT_FONT_SIZE;
+    if ((parent = rsvg_state_parent (state)))
+        parent_font_size = _rsvg_css_normalize_font_size (parent, ctx);
+    else
+        parent_font_size = RSVG_DEFAULT_FONT_SIZE;
+
+    return font_size * parent_font_size;
 }
 
 double
 _rsvg_css_normalize_length (const RsvgLength * in, RsvgDrawingCtx * ctx, char dir)
 {
-    if (in->factor == '\0')
+    double length;
+    int *test;
+
+    switch (in->unit) {
+    case RSVG_UNIT_UNKNOWN:
+        g_assert (in->unit != RSVG_UNIT_UNKNOWN);
+        return 0.0;
+    case RSVG_UNIT_NUMBER:
         return in->length;
-    else if (in->factor == 'p') {
+    case RSVG_UNIT_PERCENTAGE:
         if (dir == 'h')
-            return in->length * ctx->vb.rect.width;
+            return in->length * 0.01 * ctx->vb.rect.width;
         if (dir == 'v')
-            return in->length * ctx->vb.rect.height;
+            return in->length * 0.01 * ctx->vb.rect.height;
         if (dir == 'o')
-            return in->length * rsvg_viewport_percentage (ctx->vb.rect.width,
-                                                          ctx->vb.rect.height);
-    } else if (in->factor == 'm' || in->factor == 'x') {
-        double font = _rsvg_css_normalize_font_size (rsvg_current_state (ctx), ctx);
-        if (in->factor == 'm')
-            return in->length * font;
-        else
-            return in->length * font / 2.; /* TODO: should use real x-height of font */
-    } else if (in->factor == 'i') {
-        if (dir == 'h')
-            return in->length * ctx->dpi_x;
-        if (dir == 'v')
-            return in->length * ctx->dpi_y;
-        if (dir == 'o')
-            return in->length * rsvg_viewport_percentage (ctx->dpi_x, ctx->dpi_y);
+            return in->length * 0.01 * rsvg_viewport_percentage (ctx->vb.rect.width,
+                                                                 ctx->vb.rect.height);
+        break;
+    case RSVG_UNIT_EMS:
+        return in->length * _rsvg_css_normalize_font_size (rsvg_current_state (ctx), ctx);
+    case RSVG_UNIT_EXS:
+        /* TODO: should use real x-height of font */
+        return in->length * _rsvg_css_normalize_font_size (rsvg_current_state (ctx), ctx) * 0.5;
+    case RSVG_UNIT_PX:
+        return in->length;
+    case RSVG_UNIT_CM:
+        length = in->length / 2.54;
+        break;
+    case RSVG_UNIT_MM:
+        length = in->length / 25.4;
+        break;
+    case RSVG_UNIT_IN:
+        length = in->length;
+        break;
+    case RSVG_UNIT_PT:
+        length = in->length / 72.0;
+        break;
+    case RSVG_UNIT_PC:
+        length = in->length / 6.0;
+        break;
     }
 
-    return 0;
+    if (dir == 'h')
+        return length * ctx->dpi_x;
+    if (dir == 'v')
+        return length * ctx->dpi_y;
+    if (dir == 'o')
+        return length * rsvg_viewport_percentage (ctx->dpi_x, ctx->dpi_y);
 }
 
 double
 _rsvg_css_hand_normalize_length (const RsvgLength * in, gdouble pixels_per_inch,
                                  gdouble width_or_height, gdouble font_size)
 {
-    if (in->factor == '\0')
+    switch (in->unit) {
+    case RSVG_UNIT_UNKNOWN:
+        g_assert (in->unit != RSVG_UNIT_UNKNOWN);
+        return 0.0;
+    case RSVG_UNIT_NUMBER:
         return in->length;
-    else if (in->factor == 'p')
-        return in->length * width_or_height;
-    else if (in->factor == 'm')
+    case RSVG_UNIT_PERCENTAGE:
+        return in->length * 0.01 * width_or_height;
+    case RSVG_UNIT_EMS:
         return in->length * font_size;
-    else if (in->factor == 'x')
-        return in->length * font_size / 2.; /* TODO: should use real x-height of font */
-    else if (in->factor == 'i')
+    case RSVG_UNIT_EXS:
+        return in->length * font_size * 0.5; /* TODO: should use real x-height of font */
+    case RSVG_UNIT_PX:
+        return in->length;
+    case RSVG_UNIT_CM:
+        return in->length / 2.54 * pixels_per_inch;
+    case RSVG_UNIT_MM:
+        return in->length / 25.4 * pixels_per_inch;
+    case RSVG_UNIT_IN:
         return in->length * pixels_per_inch;
-
-    return 0;
+    case RSVG_UNIT_PT:
+        return in->length / 72.0 * pixels_per_inch;
+    case RSVG_UNIT_PC:
+        return in->length / 6.0 * pixels_per_inch;
+    }
 }
 
 static gint

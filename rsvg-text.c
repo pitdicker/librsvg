@@ -308,7 +308,7 @@ rsvg_new_text (void)
     _rsvg_node_init (&text->super, RSVG_NODE_TYPE_TEXT);
     text->super.draw = _rsvg_node_text_draw;
     text->super.set_atts = _rsvg_node_text_set_atts;
-    text->x = text->y = text->dx = text->dy = _rsvg_css_parse_length ("0");
+    text->x = text->y = text->dx = text->dy = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     return &text->super;
 }
 
@@ -331,7 +331,7 @@ _rsvg_node_text_type_tspan (RsvgNodeText * self, RsvgDrawingCtx * ctx,
             length /= 2;
     }
 
-    if (self->x.factor != 'n') {
+    if (self->x.unit != RSVG_UNIT_UNKNOWN) {
         *x = _rsvg_css_normalize_length (&self->x, ctx, 'h');
         if (!PANGO_GRAVITY_IS_VERTICAL (rsvg_current_state (ctx)->text_gravity)) {
             *x -= length;
@@ -343,7 +343,7 @@ _rsvg_node_text_type_tspan (RsvgNodeText * self, RsvgDrawingCtx * ctx,
     }
     *x += dx;
 
-    if (self->y.factor != 'n') {
+    if (self->y.unit != RSVG_UNIT_UNKNOWN) {
         *y = _rsvg_css_normalize_length (&self->y, ctx, 'v');
         if (PANGO_GRAVITY_IS_VERTICAL (rsvg_current_state (ctx)->text_gravity)) {
             *y -= length;
@@ -363,7 +363,7 @@ _rsvg_node_text_length_tspan (RsvgNodeText * self,
                               RsvgDrawingCtx * ctx, gdouble * length,
                               gboolean * lastwasspace, gboolean usetextonly)
 {
-    if (self->x.factor != 'n' || self->y.factor != 'n')
+    if (self->x.unit != RSVG_UNIT_UNKNOWN || self->y.unit != RSVG_UNIT_UNKNOWN)
         return TRUE;
 
     if (PANGO_GRAVITY_IS_VERTICAL (rsvg_current_state (ctx)->text_gravity))
@@ -410,8 +410,8 @@ rsvg_new_tspan (void)
     text = g_new (RsvgNodeText, 1);
     _rsvg_node_init (&text->super, RSVG_NODE_TYPE_TSPAN);
     text->super.set_atts = _rsvg_node_tspan_set_atts;
-    text->x.factor = text->y.factor = 'n';
-    text->dx = text->dy = _rsvg_css_parse_length ("0");
+    text->x = text->y = (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN};
+    text->dx = text->dy = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     return &text->super;
 }
 

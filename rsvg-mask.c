@@ -78,10 +78,8 @@ rsvg_new_mask (void)
     _rsvg_node_init (&mask->super, RSVG_NODE_TYPE_MASK);
     mask->maskunits = objectBoundingBox;
     mask->contentunits = userSpaceOnUse;
-    mask->x = _rsvg_css_parse_length ("0");
-    mask->y = _rsvg_css_parse_length ("0");
-    mask->width = _rsvg_css_parse_length ("1");
-    mask->height = _rsvg_css_parse_length ("1");
+    mask->x = mask->y = (RsvgLength) {0.0, RSVG_UNIT_NUMBER}; /* TODO: should be -10% */
+    mask->width = mask->height = (RsvgLength) {1.0, RSVG_UNIT_NUMBER}; /* TODO: should be 120% */
     mask->super.set_atts = rsvg_mask_set_atts;
     return &mask->super;
 }

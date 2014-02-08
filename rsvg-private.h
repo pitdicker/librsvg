@@ -244,9 +244,23 @@ _rsvg_render_check_type (RsvgRender *render,
 #define _RSVG_RENDER_CIC(render, render_type, RenderCType) \
   ((RenderCType*) _rsvg_render_check_type ((render), (render_type)))
 
+typedef enum {
+    RSVG_UNIT_UNKNOWN,
+    RSVG_UNIT_NUMBER,
+    RSVG_UNIT_PERCENTAGE,
+    RSVG_UNIT_EMS,
+    RSVG_UNIT_EXS,
+    RSVG_UNIT_PX,
+    RSVG_UNIT_CM,
+    RSVG_UNIT_MM,
+    RSVG_UNIT_IN,
+    RSVG_UNIT_PT,
+    RSVG_UNIT_PC
+} RsvgLengthUnit;
+
 typedef struct {
     double length;
-    char factor;
+    RsvgLengthUnit unit;
 } RsvgLength;
 
 typedef struct {
