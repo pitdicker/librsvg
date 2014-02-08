@@ -35,6 +35,26 @@ typedef enum {
     CSS_VALUE
 } RsvgPropSrc;
 
+typedef enum {
+    RSVG_NUMBER_FORMAT_SVG,
+    RSVG_NUMBER_FORMAT_CSS2,
+    RSVG_NUMBER_FORMAT_PATHDATA
+} RsvgNumberFormat;
+
+/* functions for parsing basic data types */
+G_GNUC_INTERNAL
+double     _rsvg_parse_number (const char *str,
+                               const char **end,
+                               const RsvgNumberFormat format);
+G_GNUC_INTERNAL
+RsvgLength _rsvg_parse_length (const char *str,
+                               const char **end,
+                               const RsvgPropSrc prop_src);
+
+/* functions for parsing properties that can only contain a basic data type */
+gboolean _rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc prop_src);
+
+/* TODO: this one should not be nessesary in a header */
 G_GNUC_INTERNAL
 RsvgPaintServer * rsvg_parse_paint_server (gboolean * inherit,
                                            const RsvgDefs * defs,

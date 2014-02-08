@@ -31,6 +31,7 @@
 #include "rsvg-image.h"
 #include "rsvg-css.h"
 #include "rsvg-cairo-render.h"
+#include "rsvg-parse-props.h"
 
 #include <string.h>
 
@@ -755,13 +756,13 @@ rsvg_filter_set_args (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
                 filter->primitiveunits = userSpaceOnUse;
         }
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -1009,13 +1010,13 @@ rsvg_filter_primitive_blend_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -1220,13 +1221,13 @@ rsvg_filter_primitive_convolve_matrix_set_atts (RsvgNode * self,
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "targetX"))) {
             has_target_x = 1;
             filter->targetx = atoi (value);
@@ -1533,13 +1534,13 @@ rsvg_filter_primitive_gaussian_blur_set_atts (RsvgNode * self,
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "stdDeviation")))
             rsvg_css_parse_number_optional_number (value, &filter->sdx, &filter->sdy);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
@@ -1683,17 +1684,17 @@ rsvg_filter_primitive_offset_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPr
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "dx")))
-            filter->dx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->dx, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "dy")))
-            filter->dy = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->dy, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -1792,13 +1793,13 @@ rsvg_filter_primitive_merge_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -2002,13 +2003,13 @@ rsvg_filter_primitive_colour_matrix_set_atts (RsvgNode * self, RsvgHandle * ctx,
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "values"))) {
             unsigned int i;
             double *temp = rsvg_css_parse_number_list (value, &listlen);
@@ -2321,13 +2322,13 @@ rsvg_filter_primitive_component_transfer_set_atts (RsvgNode * self, RsvgHandle *
         if ((value = rsvg_property_bag_lookup (atts, "in")))
             g_string_assign (filter->super.in, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -2546,13 +2547,13 @@ rsvg_filter_primitive_erode_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "radius"))) {
             rsvg_css_parse_number_optional_number (value, &filter->rx, &filter->ry);
         }
@@ -2796,13 +2797,13 @@ rsvg_filter_primitive_composite_set_atts (RsvgNode * self, RsvgHandle * ctx, Rsv
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "k1")))
             filter->k1 = g_ascii_strtod (value, NULL) * 255.;
         if ((value = rsvg_property_bag_lookup (atts, "k2")))
@@ -2921,13 +2922,13 @@ rsvg_filter_primitive_flood_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -3115,13 +3116,13 @@ rsvg_filter_primitive_displacement_map_set_atts (RsvgNode * self, RsvgHandle * c
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "xChannelSelector")))
             filter->xChannelSelector = (value)[0];
         if ((value = rsvg_property_bag_lookup (atts, "yChannelSelector")))
@@ -3501,13 +3502,13 @@ rsvg_filter_primitive_turbulence_set_atts (RsvgNode * self, RsvgHandle * ctx,
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "baseFrequency")))
             rsvg_css_parse_number_optional_number (value, &filter->fBaseFreqX, &filter->fBaseFreqY);
         if ((value = rsvg_property_bag_lookup (atts, "numOctaves")))
@@ -3747,13 +3748,13 @@ rsvg_filter_primitive_image_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPro
             g_string_assign (filter->href, value);
         }
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -4148,17 +4149,20 @@ rsvg_node_light_source_set_atts (RsvgNode * self,
         if ((value = rsvg_property_bag_lookup (atts, "limitingConeAngle")))
             filter->limitingconeAngle = rsvg_css_parse_angle (value) / 180.0 * M_PI;
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->x = filter->pointsAtX = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->x, SVG_ATTRIBUTE);
+            filter->pointsAtX = filter->x;
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->y = filter->pointsAtX = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->y, SVG_ATTRIBUTE);
+            filter->pointsAtY = filter->y;
         if ((value = rsvg_property_bag_lookup (atts, "z")))
-            filter->z = filter->pointsAtX = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->z, SVG_ATTRIBUTE);
+            filter->pointsAtZ = filter->z;
         if ((value = rsvg_property_bag_lookup (atts, "pointsAtX")))
-            filter->pointsAtX = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->pointsAtX, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "pointsAtY")))
-            filter->pointsAtY = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->pointsAtY, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "pointsAtZ")))
-            filter->pointsAtZ = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->pointsAtZ, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "specularExponent")))
             filter->specularExponent = g_ascii_strtod (value, NULL);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
@@ -4338,13 +4342,13 @@ rsvg_filter_primitive_diffuse_lighting_set_atts (RsvgNode * self, RsvgHandle * c
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "kernelUnitLength")))
             rsvg_css_parse_number_optional_number (value, &filter->dx, &filter->dy);
         if ((value = rsvg_property_bag_lookup (atts, "lighting-color")))
@@ -4534,13 +4538,13 @@ rsvg_filter_primitive_specular_lighting_set_atts (RsvgNode * self, RsvgHandle * 
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "lighting-color")))
             filter->lightingcolour = rsvg_css_parse_color (value, 0);
         if ((value = rsvg_property_bag_lookup (atts, "specularConstant")))
@@ -4676,13 +4680,13 @@ rsvg_filter_primitive_tile_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgProp
         if ((value = rsvg_property_bag_lookup (atts, "result")))
             g_string_assign (filter->super.result, value);
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            filter->super.x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            filter->super.y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            filter->super.width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            filter->super.height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {

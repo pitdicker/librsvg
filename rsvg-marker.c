@@ -34,6 +34,7 @@
 #include "rsvg-defs.h"
 #include "rsvg-image.h"
 #include "rsvg-path.h"
+#include "rsvg-parse-props.h"
 
 #include <string.h>
 #include <math.h>
@@ -55,13 +56,13 @@ rsvg_node_marker_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * 
         if ((value = rsvg_property_bag_lookup (atts, "viewBox")))
             marker->vbox = rsvg_css_parse_vbox (value);
         if ((value = rsvg_property_bag_lookup (atts, "refX")))
-            marker->refX = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &marker->refX, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "refY")))
-            marker->refY = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &marker->refY, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "markerWidth")))
-            marker->width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &marker->width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "markerHeight")))
-            marker->height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &marker->height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "orient"))) {
             if (!strcmp (value, "auto"))
                 marker->orientAuto = TRUE;

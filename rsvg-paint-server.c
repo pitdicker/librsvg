@@ -29,6 +29,7 @@
 #include "rsvg-paint-server.h"
 #include "rsvg-styles.h"
 #include "rsvg-image.h"
+#include "rsvg-parse-props.h"
 
 #include <glib.h>
 #include <string.h>
@@ -146,7 +147,8 @@ rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "offset"))) {
             /* either a number [0,1] or a percentage */
-            RsvgLength length = _rsvg_css_parse_length (value);
+            RsvgLength length;
+            _rsvg_parse_prop_length (value, &length, SVG_ATTRIBUTE);
             offset = _rsvg_css_hand_normalize_length (&length, rsvg_dpi_percentage (ctx), 1., 0.);
 
             if (offset < 0.)
@@ -194,19 +196,19 @@ rsvg_linear_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
         if ((value = rsvg_property_bag_lookup (atts, "id")))
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         if ((value = rsvg_property_bag_lookup (atts, "x1"))) {
-            grad->x1 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->x1, SVG_ATTRIBUTE);
             grad->hasx1 = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "y1"))) {
-            grad->y1 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->y1, SVG_ATTRIBUTE);
             grad->hasy1 = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "x2"))) {
-            grad->x2 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->x2, SVG_ATTRIBUTE);
             grad->hasx2 = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "y2"))) {
-            grad->y2 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->y2, SVG_ATTRIBUTE);
             grad->hasy2 = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "spreadMethod"))) {
@@ -270,27 +272,27 @@ rsvg_radial_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
         if ((value = rsvg_property_bag_lookup (atts, "id")))
             rsvg_defs_register_name (ctx->priv->defs, value, self);
         if ((value = rsvg_property_bag_lookup (atts, "cx"))) {
-            grad->cx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->cx, SVG_ATTRIBUTE);
             grad->hascx = TRUE;
             if (!grad->hasfx)
                 grad->fx = grad->cx;
         }
         if ((value = rsvg_property_bag_lookup (atts, "cy"))) {
-            grad->cy = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->cy, SVG_ATTRIBUTE);
             grad->hascy = TRUE;
             if (!grad->hasfy)
                 grad->fy = grad->cy;
         }
         if ((value = rsvg_property_bag_lookup (atts, "r"))) {
-            grad->r = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->r, SVG_ATTRIBUTE);
             grad->hasr = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "fx"))) {
-            grad->fx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->fx, SVG_ATTRIBUTE);
             grad->hasfx = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "fy"))) {
-            grad->fy = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &grad->fy, SVG_ATTRIBUTE);
             grad->hasfy = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "xlink:href"))) {
@@ -356,19 +358,19 @@ rsvg_pattern_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts
             pattern->hasvbox = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "x"))) {
-            pattern->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &pattern->x, SVG_ATTRIBUTE);
             pattern->hasx = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "y"))) {
-            pattern->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &pattern->y, SVG_ATTRIBUTE);
             pattern->hasy = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "width"))) {
-            pattern->width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &pattern->width, SVG_ATTRIBUTE);
             pattern->haswidth = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "height"))) {
-            pattern->height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &pattern->height, SVG_ATTRIBUTE);
             pattern->hasheight = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "xlink:href"))) {

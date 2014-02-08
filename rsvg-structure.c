@@ -31,6 +31,7 @@
 #include "rsvg-image.h"
 #include "rsvg-css.h"
 #include "string.h"
+#include "rsvg-parse-props.h"
 
 #include <stdio.h>
 
@@ -341,17 +342,17 @@ rsvg_node_svg_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * att
         if ((value = rsvg_property_bag_lookup (atts, "preserveAspectRatio")))
             svg->preserve_aspect_ratio = rsvg_css_parse_aspect_ratio (value);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            svg->w = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &svg->w, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            svg->h = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &svg->h, SVG_ATTRIBUTE);
         /* 
          * x & y attributes have no effect on outermost svg
          * http://www.w3.org/TR/SVG/struct.html#SVGElement 
          */
         if (self->parent && (value = rsvg_property_bag_lookup (atts, "x")))
-            svg->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &svg->x, SVG_ATTRIBUTE);
         if (self->parent && (value = rsvg_property_bag_lookup (atts, "y")))
-            svg->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &svg->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
             rsvg_defs_register_name (ctx->priv->defs, value, &svg->super);
         }
@@ -417,13 +418,13 @@ rsvg_node_use_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * att
     use = (RsvgNodeUse *) self;
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            use->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &use->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            use->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &use->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            use->w = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &use->w, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            use->h = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &use->h, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {

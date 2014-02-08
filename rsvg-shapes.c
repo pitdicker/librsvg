@@ -39,6 +39,7 @@
 #include "rsvg-defs.h"
 #include "rsvg-path.h"
 #include "rsvg-marker.h"
+#include "rsvg-parse-props.h"
 
 struct _RsvgNodeRect {
     RsvgNode super;
@@ -56,19 +57,19 @@ _rsvg_node_rect_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            rect->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &rect->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            rect->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &rect->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            rect->w = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &rect->w, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            rect->h = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &rect->h, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "rx"))) {
-            rect->rx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &rect->rx, SVG_ATTRIBUTE);
             rect->got_rx = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "ry"))) {
-            rect->ry = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &rect->ry, SVG_ATTRIBUTE);
             rect->got_ry = TRUE;
         }
         if ((value = rsvg_property_bag_lookup (atts, "class")))
@@ -193,11 +194,11 @@ _rsvg_node_circle_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag *
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "cx")))
-            circle->cx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &circle->cx, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "cy")))
-            circle->cy = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &circle->cy, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "r")))
-            circle->r = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &circle->r, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -269,13 +270,13 @@ _rsvg_node_ellipse_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag 
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "cx")))
-            ellipse->cx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &ellipse->cx, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "cy")))
-            ellipse->cy = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &ellipse->cy, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "rx")))
-            ellipse->rx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &ellipse->rx, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "ry")))
-            ellipse->ry = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &ellipse->ry, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -348,13 +349,13 @@ _rsvg_node_line_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "x1")))
-            line->x1 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &line->x1, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y1")))
-            line->y1 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &line->y1, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "x2")))
-            line->x2 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &line->x2, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y2")))
-            line->y2 = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &line->y2, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {

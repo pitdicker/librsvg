@@ -35,6 +35,7 @@
 #include <errno.h>
 #include "rsvg-css.h"
 #include "rsvg-io.h"
+#include "rsvg-parse-props.h"
 
 cairo_surface_t *
 rsvg_cairo_surface_new_from_href (RsvgHandle *handle,
@@ -191,13 +192,13 @@ rsvg_node_image_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            image->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &image->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            image->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &image->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            image->w = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &image->w, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            image->h = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &image->h, SVG_ATTRIBUTE);
         /* path is used by some older adobe illustrator versions */
         if ((value = rsvg_property_bag_lookup (atts, "path"))
             || (value = rsvg_property_bag_lookup (atts, "xlink:href"))) {

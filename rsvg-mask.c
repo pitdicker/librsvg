@@ -27,6 +27,7 @@
 #include "rsvg-mask.h"
 #include "rsvg-styles.h"
 #include "rsvg-css.h"
+#include "rsvg-parse-props.h"
 #include <string.h>
 
 static void
@@ -50,13 +51,13 @@ rsvg_mask_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
                 mask->contentunits = userSpaceOnUse;
         }
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            mask->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &mask->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            mask->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &mask->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "width")))
-            mask->width = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &mask->width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
-            mask->height = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &mask->height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
             id = value;
             rsvg_defs_register_name (ctx->priv->defs, id, &mask->super);

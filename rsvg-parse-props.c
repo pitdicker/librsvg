@@ -32,16 +32,176 @@
 #include "rsvg-css.h"
 #include "rsvg-paint-server.h"
 
-#define POINTS_PER_INCH (72.0)
+#define POINTS_TO_INCH (1.0 / 72.0)
+#define CM_TO_INCH     (1.0 / 2.54)
+#define MM_TO_INCH     (1.0 / 25.4)
+#define PICA_TO_INCH   (1.0 / 6.0)
+
 #define SETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = TRUE;} G_STMT_END
 #define UNSETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = FALSE;} G_STMT_END
 
 static const char * rsvg_parse_font_family  (const char *str, gboolean * inherit);
-static RsvgLength   rsvg_parse_font_size    (const char *str);
 static PangoStretch rsvg_parse_font_stretch (const char *str, gboolean * inherit);
 static PangoStyle   rsvg_parse_font_style   (const char *str, gboolean * inherit);
 static PangoVariant rsvg_parse_font_variant (const char *str, gboolean * inherit);
 static PangoWeight  rsvg_parse_font_weight  (const char *str, gboolean * inherit);
+
+static gboolean rsvg_parse_font_size    (const char *str, RsvgLength *result, const RsvgPropSrc prop_src);
+
+static int
+rsvg_cmp_keyword (const void *str, const void *b)
+{
+    struct keywords {
+        const char *keyword;
+    };
+    return strcmp ((const char *) str, ((struct keywords *) b)->keyword);
+}
+
+static int
+rsvg_casecmp_keyword (const void *str, const void *b)
+{
+    struct keywords {
+        const char *keyword;
+    };
+    return g_ascii_strcasecmp ((const char *) str, ((struct keywords *) b)->keyword);
+}
+
+#define rsvg_match_keyword(str, keywords, prop_src) bsearch (str, keywords, sizeof (keywords) / sizeof (keywords[0]), sizeof (keywords[0]), (prop_src == CSS_VALUE)? rsvg_casecmp_keyword : rsvg_cmp_keyword)
+
+/**
+ * _rsvg_parse_number:
+ * Parse a number using g_ascii_strtod, but do extra checks to ensure the number
+ * matches the stricter requirements of an svg number, css number, or a number
+ * in svg path data.
+ * If str does not start with a valid number, 0.0 is returned and *end = str.
+ */
+double
+_rsvg_parse_number (const char *str, const char **end, const RsvgNumberFormat format)
+{
+    double number;
+
+    *end = str;
+
+    if (*str == '.') {
+        /* '.' must be followed by a number */
+        if (!g_ascii_isdigit(str[1]))
+            return 0.;
+    } else if (*str == '+' || *str == '-') {
+        /* '+' or '-' must be followed by a digit,
+           or by a '.' that is followed by a digit */
+        if (!(g_ascii_isdigit(str[1]) ||
+              (str[1] == '.' && g_ascii_isdigit(str[2]))))
+            return 0.;
+    } else if (!g_ascii_isdigit(*str)) {
+        return 0.;
+    }
+
+    number = g_ascii_strtod (str, (gchar **) end);
+    /* out-of-range values are clamped by strtod, no need to check errno for ERANGE */
+
+    /* In 'path data' or 'point specification', a number may end with '.', but
+       in svg attributes and css properties it may not. */
+    if (format != RSVG_NUMBER_FORMAT_PATHDATA && (*end)[-1] == '.')
+        (*end)--;
+
+    /* css2 does not allow exponential notation */
+    if (format == RSVG_NUMBER_FORMAT_CSS2) {
+        while (str < *end) {
+            if (*str == 'E' || *str == 'e') {
+                /* undo exponent */
+                gint64 exponent;
+                *end = str;
+                str++;
+                exponent = g_ascii_strtoll (*end + 1, (gchar **) &str, 10);
+                number *= pow (10, -exponent);
+                break;
+            }
+            str++;
+        }
+    }
+
+    return number;
+}
+
+/**
+ * _rsvg_parse_length:
+ * Parse the basic data type 'length'.
+ * If str does not start with a valid length, 0.0px is returned and *end = str.
+ */
+RsvgLength
+_rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_src)
+{
+    guint length;
+    RsvgLength out;
+    RsvgNumberFormat format;
+
+    struct length_units {
+        const char *keyword;
+        guint keyword_length;
+        RsvgLength value;
+    };
+    const struct length_units units[] = {
+        {"%",  1, {0.01, 'p'}},
+        {"cm", 2, {CM_TO_INCH, 'i'}},
+        {"em", 2, {1.0, 'm'}},
+        {"ex", 2, {1.0, 'x'}},
+        {"in", 2, {1.0, 'i'}},
+        {"mm", 2, {MM_TO_INCH, 'i'}},
+        {"pc", 2, {PICA_TO_INCH, 'i'}},
+        {"pt", 2, {POINTS_TO_INCH, 'i'}},
+        {"px", 2, {1.0, '\0'}},
+    };
+    struct length_units *unit_index;
+
+    g_assert (str != NULL);
+
+    switch (prop_src) {
+    case SVG_ATTRIBUTE:
+        format = RSVG_NUMBER_FORMAT_SVG;
+        break;
+    case CSS_VALUE:
+        format = RSVG_NUMBER_FORMAT_CSS2;
+        break;
+    }
+
+    length = _rsvg_parse_number (str, end, format);
+    if (*end == str) /* invalid number */
+        return (RsvgLength) {0.0, '\0'};
+
+    if ((unit_index = rsvg_match_keyword (*end, units, prop_src))) {
+        out = unit_index->value;
+        out.length *= length;
+        *end += unit_index->keyword_length;
+    } else {
+        /* no unit implies 'px' */
+        out.length = length;
+        out.factor = '\0';
+    }
+
+    return out;
+}
+
+/* ========================================================================== */
+
+gboolean
+_rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc prop_src)
+{
+    RsvgLength length;
+    const char *end;
+
+    g_assert (str != NULL);
+
+    length = _rsvg_parse_length (str, &end, prop_src);
+    if (str == end || *end != '\0') {
+        printf ("invalid length: '%s'\n", str); /* TODO: report errors properly */
+        return FALSE;
+    }
+
+    *result = length;
+    return TRUE;
+}
+
+/* ========================================================================== */
 
 static RsvgNode *
 rsvg_parse_clip_path (const RsvgDefs * defs, const char *str)
@@ -152,50 +312,44 @@ rsvg_parse_font_family (const char *str, gboolean * inherit)
         return str;
 }
 
-static RsvgLength
-rsvg_parse_font_size (const char *str)
+static gboolean
+rsvg_parse_font_size (const char *str, RsvgLength *result, const RsvgPropSrc prop_src)
 {
-    RsvgLength out;
+    RsvgLength length;
+    const char *end;
 
-    /* TODO: inherit */
+    struct font_size_keywords {
+        const char *keyword;
+        RsvgLength value;
+    };
+    const struct font_size_keywords keywords[] = {
+        {"large",    {RSVG_DEFAULT_FONT_SIZE * 1.2, '\0'}},
+        {"larger",   {1.2, 'm'}},
+        {"medium",   {RSVG_DEFAULT_FONT_SIZE, '\0'}},
+        {"small",    {RSVG_DEFAULT_FONT_SIZE / 1.2, '\0'}},
+        {"smaller",  {1.0 / 1.2, 'm'}},
+        {"x-large",  {RSVG_DEFAULT_FONT_SIZE * (1.2 * 1.2), '\0'}},
+        {"x-small",  {RSVG_DEFAULT_FONT_SIZE / (1.2 * 1.2), '\0'}},
+        {"xx-large", {RSVG_DEFAULT_FONT_SIZE * (1.2 * 1.2 * 1.2), '\0'}},
+        {"xx-small", {RSVG_DEFAULT_FONT_SIZE / (1.2 * 1.2 * 1.2), '\0'}}
+    };
+    struct font_size_keywords *keyword;
 
-    /* absolute-size values */
-    out.factor = 'i';
-    out.length = RSVG_DEFAULT_FONT_SIZE / POINTS_PER_INCH;
-    if (g_ascii_strcasecmp (str, "xx-small") == 0) {
-        out.length /= 1.2 * 1.2 * 1.2;
-        return out;
-    } else if (g_ascii_strcasecmp (str, "x-small") == 0) {
-        out.length /= 1.2 * 1.2;
-        return out;
-    } else if (g_ascii_strcasecmp (str, "small") == 0) {
-        out.length /= 1.2;
-        return out;
-    } else if (g_ascii_strcasecmp (str, "medium") == 0) {
-        return out;
-    } else if (g_ascii_strcasecmp (str, "large") == 0) {
-        out.length *= 1.2;
-        return out;
-    } else if (g_ascii_strcasecmp (str, "x-large") == 0) {
-        out.length *= 1.2 * 1.2;
-        return out;
-    } else if (g_ascii_strcasecmp (str, "xx-large") == 0) {
-        out.length *= 1.2 * 1.2 * 1.2;
-        return out;
+    g_assert (str != NULL);
+
+    if ((keyword = rsvg_match_keyword (str, keywords, prop_src))) {
+        *result = keyword->value;
+    } else {
+        /* try normal length values */
+        length = _rsvg_parse_length (str, &end, prop_src);
+        if (str == end || *end != '\0' ||
+            (prop_src == CSS_VALUE && g_ascii_isdigit(end[-1])) ) {
+            printf ("invalid font size: '%s'\n", str); /* TODO: report errors properly */
+            return FALSE;
+        }
+        *result = length;
     }
-
-    /* relative-size values */
-    out.factor = 'm';
-    if (g_ascii_strcasecmp (str, "larger") == 0) {
-        out.length = 1.2;
-        return out;
-    } else if (g_ascii_strcasecmp (str, "smaller") == 0) {
-        out.length = 1.0 / 1.2;
-        return out;
-    }
-
-    /* normal length */
-    return _rsvg_css_parse_length (str);
+    return TRUE;
 }
 
 static PangoStretch
@@ -454,7 +608,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
         g_free (state->font_family);
         state->font_family = save;
     } else if (g_str_equal (name, "font-size")) {
-        state->font_size = rsvg_parse_font_size (value);
+        rsvg_parse_font_size (value, &state->font_size, prop_src);
         state->has_font_size = TRUE;
     } else if (g_str_equal (name, "font-size-adjust")) {
         /* TODO */
@@ -476,7 +630,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
         /* TODO */
     } else if (g_str_equal (name, "letter-spacing")) {
         state->has_letter_spacing = TRUE;
-        state->letter_spacing = _rsvg_css_parse_length (value);
+        _rsvg_parse_prop_length (value, &state->letter_spacing, prop_src);
     } else if (g_str_equal (name, "lighting-color")) {
         /* TODO */
     } else if (g_str_equal (name, "marker")) {
@@ -556,7 +710,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
                 i = j = 0;
                 while (dashes[i] != NULL) {
                     if (*dashes[i] != '\0') {
-                        /* TODO: use _rsvg_css_parse_length */
+                        /* TODO: use _rsvg_parse_length */
                         state->dash.dash[j] = g_ascii_strtod (dashes[i], NULL);
                         total += state->dash.dash[j];
                         j++;
@@ -579,7 +733,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
         }
     } else if (g_str_equal (name, "stroke-dashoffset")) {
         state->has_dashoffset = TRUE;
-        state->dash.offset = _rsvg_css_parse_length (value);
+        _rsvg_parse_prop_length (value, &state->dash.offset, prop_src);
         if (state->dash.offset.length < 0.)
             state->dash.offset.length = 0.;
     } else if (g_str_equal (name, "stroke-linecap")) {
@@ -609,7 +763,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
         else
             g_warning (_("unknown line join style %s\n"), value);
     } else if (g_str_equal (name, "stroke-width")) {
-        state->stroke_width = _rsvg_css_parse_length (value);
+        _rsvg_parse_prop_length (value, &state->stroke_width, prop_src);
         state->has_stroke_width = TRUE;
     } else if (g_str_equal (name, "text-anchor")) {
         state->has_text_anchor = TRUE;
@@ -755,4 +909,3 @@ rsvg_parse_prop (RsvgHandle * ctx,
             state->comp_op = CAIRO_OPERATOR_OVER;
     }
 }
-

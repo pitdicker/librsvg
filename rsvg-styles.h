@@ -35,7 +35,7 @@
 #include <pango/pango.h>
 
 #define RSVG_DEFAULT_FONT      "Times New Roman"
-#define RSVG_DEFAULT_FONT_SIZE 12.0 /* pt */
+#define RSVG_DEFAULT_FONT_SIZE 16.0 /* px */
 
 G_BEGIN_DECLS
 

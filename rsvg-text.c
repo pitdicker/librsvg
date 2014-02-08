@@ -30,6 +30,7 @@
 #include "rsvg-styles.h"
 #include "rsvg-text.h"
 #include "rsvg-css.h"
+#include "rsvg-parse-props.h"
 
 #include "rsvg-shapes.h"
 
@@ -130,14 +131,16 @@ _rsvg_node_text_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * a
     RsvgNodeText *text = (RsvgNodeText *) self;
 
     if (rsvg_property_bag_size (atts)) {
+        /* TODO: all attributes should support a list of lengths */
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            text->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            text->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "dx")))
-            text->dx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->dx, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "dy")))
-            text->dy = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->dy, SVG_ATTRIBUTE);
+        /* TODO: 'rotate', 'textLength', 'lengthAdjust' */
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
@@ -379,14 +382,16 @@ _rsvg_node_tspan_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * 
     RsvgNodeText *text = (RsvgNodeText *) self;
 
     if (rsvg_property_bag_size (atts)) {
+        /* TODO: all attributes should support a list of lengths */
         if ((value = rsvg_property_bag_lookup (atts, "x")))
-            text->x = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->x, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "y")))
-            text->y = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->y, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "dx")))
-            text->dx = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->dx, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "dy")))
-            text->dy = _rsvg_css_parse_length (value);
+            _rsvg_parse_prop_length (value, &text->dy, SVG_ATTRIBUTE);
+        /* TODO: 'rotate', 'textLength', 'lengthAdjust' */
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "id"))) {
