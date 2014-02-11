@@ -322,23 +322,6 @@ rsvg_css_parse_color (const char *str, gboolean * inherit)
 #undef PACK_RGB
 #undef PACK_RGBA
 
-guint
-rsvg_css_parse_opacity (const char *str)
-{
-    char *end_ptr = NULL;
-    double opacity;
-
-    opacity = g_ascii_strtod (str, &end_ptr);
-
-    if (((opacity == -HUGE_VAL || opacity == HUGE_VAL) && (ERANGE == errno)) ||
-        *end_ptr != '\0')
-        opacity = 1.;
-
-    opacity = CLAMP (opacity, 0., 1.);
-
-    return (guint) floor (opacity * 255. + 0.5);
-}
-
 /*
   <angle>: An angle value is a <number> optionally followed immediately with
   an angle unit identifier. Angle unit identifiers are:

@@ -105,9 +105,9 @@ struct _RsvgState {
     gboolean has_fill_server;
     guint8 fill_opacity;        /* 0..255 */
     gboolean has_fill_opacity;
-    gint fill_rule;
+    cairo_fill_rule_t fill_rule;
     gboolean has_fill_rule;
-    gint clip_rule;
+    cairo_fill_rule_t clip_rule;
     gboolean has_clip_rule;
 
     gboolean overflow;
@@ -158,7 +158,7 @@ struct _RsvgState {
 
     guint32 stop_color;         /* rgb */
     gboolean has_stop_color;
-    gint stop_opacity;          /* 0..255 */
+    guint8 stop_opacity;        /* 0..255 */
     gboolean has_stop_opacity;
 
     gboolean visible;
@@ -180,7 +180,7 @@ struct _RsvgState {
     guint32 flood_color;
     gboolean has_flood_color;
 
-    guchar flood_opacity;
+    guint8 flood_opacity;
     gboolean has_flood_opacity;
 
     RsvgNode *startMarker;

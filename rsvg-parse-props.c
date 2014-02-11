@@ -32,17 +32,6 @@
 #include "rsvg-css.h"
 #include "rsvg-paint-server.h"
 
-#define SETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = TRUE;} G_STMT_END
-#define UNSETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = FALSE;} G_STMT_END
-
-static const char * rsvg_parse_font_family  (const char *str, gboolean * inherit);
-static PangoStretch rsvg_parse_font_stretch (const char *str, gboolean * inherit);
-static PangoStyle   rsvg_parse_font_style   (const char *str, gboolean * inherit);
-static PangoVariant rsvg_parse_font_variant (const char *str, gboolean * inherit);
-static PangoWeight  rsvg_parse_font_weight  (const char *str, gboolean * inherit);
-
-static gboolean rsvg_parse_font_size    (const char *str, RsvgLength *result, const RsvgPropSrc prop_src);
-
 static int
 rsvg_cmp_keyword (const void *str, const void *b)
 {
@@ -74,6 +63,8 @@ double
 _rsvg_parse_number (const char *str, const char **end, const RsvgNumberFormat format)
 {
     double number;
+
+    g_assert (str != NULL);
 
     *end = str;
 
@@ -127,7 +118,6 @@ RsvgLength
 _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_src)
 {
     RsvgLength out;
-    RsvgNumberFormat format;
 
     struct length_units {
         const char *keyword;
@@ -148,16 +138,7 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
 
     g_assert (str != NULL);
 
-    switch (prop_src) {
-    case SVG_ATTRIBUTE:
-        format = RSVG_NUMBER_FORMAT_SVG;
-        break;
-    case CSS_VALUE:
-        format = RSVG_NUMBER_FORMAT_CSS2;
-        break;
-    }
-
-    out.length = _rsvg_parse_number (str, end, format);
+    out.length = _rsvg_parse_number (str, end, prop_src);
     if (*end == str) /* invalid number */
         return (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN}; /* TODO: will this give problems? */
 
@@ -174,6 +155,25 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
     return out;
 }
 
+static char *
+rsvg_get_url_string (const char *str)
+//_rsvg_parse_funciri (const char *str)
+{
+    /* TODO */
+    if (!strncmp (str, "url(", 4)) {
+        const char *p = str + 4;
+        int ix;
+
+        while (g_ascii_isspace (*p))
+            p++;
+
+        for (ix = 0; p[ix]; ix++)
+            if (p[ix] == ')')
+                return g_strndup (p, ix);
+    }
+    return NULL;
+}
+
 /* ========================================================================== */
 
 gboolean
@@ -185,16 +185,51 @@ _rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc 
     g_assert (str != NULL);
 
     length = _rsvg_parse_length (str, &end, prop_src);
-    if (str == end || *end != '\0') {
-        printf ("invalid length: '%s'\n", str); /* TODO: report errors properly */
+    if (str == end || *end != '\0')
         return FALSE;
-    }
 
     *result = length;
     return TRUE;
 }
 
+static gboolean
+_rsvg_parse_opacity (const char *str, guint8 *result, const RsvgPropSrc prop_src)
+{
+    double opacity;
+    const char *end;
+
+    opacity = _rsvg_parse_number (str, &end, prop_src);
+    if (str == end || *end != '\0')
+        return FALSE;
+
+    opacity = CLAMP (opacity, 0., 1.);
+    *result = floor (opacity * 255. + 0.5);
+
+    return TRUE;
+}
+
 /* ========================================================================== */
+
+static gboolean
+rsvg_parse_direction (const char *str, PangoDirection *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        PangoDirection value;
+    };
+    const struct keywords keywords[] = {
+        {"ltr", PANGO_DIRECTION_LTR},
+        {"rtl", PANGO_DIRECTION_RTL}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
 
 static RsvgNode *
 rsvg_parse_clip_path (const RsvgDefs * defs, const char *str)
@@ -291,31 +326,48 @@ rsvg_parse_filter (const RsvgDefs * defs, const char *str)
     return NULL;
 }
 
-static const char *
-rsvg_parse_font_family (const char *str, gboolean * inherit)
+static gboolean
+rsvg_parse_fill_rule (const char *str, cairo_fill_rule_t *result, const RsvgPropSrc prop_src)
 {
-    SETINHERIT ();
+    struct keywords {
+        const char *keyword;
+        cairo_fill_rule_t value;
+    };
+    const struct keywords keywords[] = {
+        {"evenodd", CAIRO_FILL_RULE_EVEN_ODD},
+        {"nonzero", CAIRO_FILL_RULE_WINDING}
+    };
+    struct keywords *keyword;
 
-    if (str == NULL)
-        return NULL;
-    else if (!strcmp (str, "inherit")) {
-        UNSETINHERIT ();
-        return NULL;
-    } else
-        return str;
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_font_family (const char *str, char **result, const RsvgPropSrc prop_src)
+{
+    if (*result != NULL)
+        g_free (*result);
+    /* TODO: who does the parsing and error-checking of font-family */
+    *result = g_strdup (str);
+    return TRUE;
 }
 
 static gboolean
 rsvg_parse_font_size (const char *str, RsvgLength *result, const RsvgPropSrc prop_src)
 {
-    RsvgLength length;
+    RsvgLength font_size;
     const char *end;
 
-    struct font_size_keywords {
+    struct keywords {
         const char *keyword;
         RsvgLength value;
     };
-    const struct font_size_keywords keywords[] = {
+    const struct keywords keywords[] = {
         {"large",    {RSVG_DEFAULT_FONT_SIZE * 1.2, RSVG_UNIT_PX}},
         {"larger",   {1.2, RSVG_UNIT_EMS}},
         {"medium",   {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX}},
@@ -326,7 +378,7 @@ rsvg_parse_font_size (const char *str, RsvgLength *result, const RsvgPropSrc pro
         {"xx-large", {RSVG_DEFAULT_FONT_SIZE * (1.2 * 1.2 * 1.2), RSVG_UNIT_PX}},
         {"xx-small", {RSVG_DEFAULT_FONT_SIZE / (1.2 * 1.2 * 1.2), RSVG_UNIT_PX}}
     };
-    struct font_size_keywords *keyword;
+    struct keywords *keyword;
 
     g_assert (str != NULL);
 
@@ -334,121 +386,124 @@ rsvg_parse_font_size (const char *str, RsvgLength *result, const RsvgPropSrc pro
         *result = keyword->value;
     } else {
         /* try normal length values */
-        length = _rsvg_parse_length (str, &end, prop_src);
+        font_size = _rsvg_parse_length (str, &end, prop_src);
         if (str == end || *end != '\0' ||
-            (prop_src == CSS_VALUE && length.unit == RSVG_UNIT_NUMBER && length.length != 0.0) ) {
-            printf ("invalid font size: '%s'\n", str); /* TODO: report errors properly */
+            (prop_src == CSS_VALUE && font_size.unit == RSVG_UNIT_NUMBER && font_size.length != 0.0) ||
+            font_size.length < 0.0 ) {
             return FALSE;
         }
-        *result = length;
+        *result = font_size;
     }
     return TRUE;
 }
 
-static PangoStretch
-rsvg_parse_font_stretch (const char *str, gboolean * inherit)
+static gboolean
+rsvg_parse_font_stretch (const char *str, PangoStretch *result, const RsvgPropSrc prop_src)
 {
-    SETINHERIT ();
+    struct keywords {
+        const char *keyword;
+        PangoStretch value;
+    };
+    const struct keywords keywords[] = {
+        {"condensed",       PANGO_STRETCH_CONDENSED},
+        {"expanded",        PANGO_STRETCH_EXPANDED},
+        {"extra-condensed", PANGO_STRETCH_EXTRA_CONDENSED},
+        {"extra-expanded",  PANGO_STRETCH_EXTRA_EXPANDED},
+        {"narrower",        PANGO_STRETCH_CONDENSED},
+        {"normal",          PANGO_STRETCH_NORMAL},
+        {"semi-condensed",  PANGO_STRETCH_SEMI_CONDENSED},
+        {"semi-expanded",   PANGO_STRETCH_SEMI_EXPANDED},
+        {"ultra-condensed", PANGO_STRETCH_ULTRA_CONDENSED},
+        {"ultra-expanded",  PANGO_STRETCH_ULTRA_EXPANDED},
+        {"wider",           PANGO_STRETCH_EXPANDED}
+    };
+    struct keywords *keyword;
 
-    if (str) {
-        if (!strcmp (str, "ultra-condensed"))
-            return PANGO_STRETCH_ULTRA_CONDENSED;
-        else if (!strcmp (str, "extra-condensed"))
-            return PANGO_STRETCH_EXTRA_CONDENSED;
-        else if (!strcmp (str, "condensed") || !strcmp (str, "narrower"))       /* narrower not quite correct */
-            return PANGO_STRETCH_CONDENSED;
-        else if (!strcmp (str, "semi-condensed"))
-            return PANGO_STRETCH_SEMI_CONDENSED;
-        else if (!strcmp (str, "semi-expanded"))
-            return PANGO_STRETCH_SEMI_EXPANDED;
-        else if (!strcmp (str, "expanded") || !strcmp (str, "wider"))   /* wider not quite correct */
-            return PANGO_STRETCH_EXPANDED;
-        else if (!strcmp (str, "extra-expanded"))
-            return PANGO_STRETCH_EXTRA_EXPANDED;
-        else if (!strcmp (str, "ultra-expanded"))
-            return PANGO_STRETCH_ULTRA_EXPANDED;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_STRETCH_NORMAL;
-        }
-    }
-    UNSETINHERIT ();
-    return PANGO_STRETCH_NORMAL;
+    /* TODO: 'narrower' and 'wider' should be relative to the font-stretch of the parent node */
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
 }
 
-static PangoStyle
-rsvg_parse_font_style (const char *str, gboolean * inherit)
+static gboolean
+rsvg_parse_font_style (const char *str, PangoStyle *result, const RsvgPropSrc prop_src)
 {
-    SETINHERIT ();
+    struct keywords {
+        const char *keyword;
+        PangoStyle value;
+    };
+    const struct keywords keywords[] = {
+        {"italic",  PANGO_STRETCH_CONDENSED},
+        {"normal",  PANGO_STRETCH_EXPANDED},
+        {"oblique", PANGO_STRETCH_EXPANDED}
+    };
+    struct keywords *keyword;
 
-    if (str) {
-        if (!strcmp (str, "oblique"))
-            return PANGO_STYLE_OBLIQUE;
-        if (!strcmp (str, "italic"))
-            return PANGO_STYLE_ITALIC;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_STYLE_NORMAL;
-        }
-    }
-    UNSETINHERIT ();
-    return PANGO_STYLE_NORMAL;
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
 }
 
-static PangoVariant
-rsvg_parse_font_variant (const char *str, gboolean * inherit)
+static gboolean
+rsvg_parse_font_variant (const char *str, PangoVariant *result, const RsvgPropSrc prop_src)
 {
-    SETINHERIT ();
+    struct keywords {
+        const char *keyword;
+        PangoVariant value;
+    };
+    const struct keywords keywords[] = {
+        {"normal",     PANGO_VARIANT_SMALL_CAPS},
+        {"small-caps", PANGO_VARIANT_NORMAL}
+    };
+    struct keywords *keyword;
 
-    if (str) {
-        if (!strcmp (str, "small-caps"))
-            return PANGO_VARIANT_SMALL_CAPS;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_VARIANT_NORMAL;
-        }
-    }
-    UNSETINHERIT ();
-    return PANGO_VARIANT_NORMAL;
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
 }
 
-static PangoWeight
-rsvg_parse_font_weight (const char *str, gboolean * inherit)
+static gboolean
+rsvg_parse_font_weight (const char *str, PangoWeight *result, const RsvgPropSrc prop_src)
 {
-    SETINHERIT ();
-    if (str) {
-        if (!strcmp (str, "lighter"))
-            return PANGO_WEIGHT_LIGHT;
-        else if (!strcmp (str, "bold"))
-            return PANGO_WEIGHT_BOLD;
-        else if (!strcmp (str, "bolder"))
-            return PANGO_WEIGHT_ULTRABOLD;
-        else if (!strcmp (str, "100"))
-            return (PangoWeight) 100;
-        else if (!strcmp (str, "200"))
-            return (PangoWeight) 200;
-        else if (!strcmp (str, "300"))
-            return (PangoWeight) 300;
-        else if (!strcmp (str, "400"))
-            return (PangoWeight) 400;
-        else if (!strcmp (str, "500"))
-            return (PangoWeight) 500;
-        else if (!strcmp (str, "600"))
-            return (PangoWeight) 600;
-        else if (!strcmp (str, "700"))
-            return (PangoWeight) 700;
-        else if (!strcmp (str, "800"))
-            return (PangoWeight) 800;
-        else if (!strcmp (str, "900"))
-            return (PangoWeight) 900;
-        else if (!strcmp (str, "inherit")) {
-            UNSETINHERIT ();
-            return PANGO_WEIGHT_NORMAL;
-        }
-    }
+    struct keywords {
+        const char *keyword;
+        PangoWeight value;
+    };
+    const struct keywords keywords[] = {
+        {"100",     100},
+        {"200",     200},
+        {"300",     300},
+        {"400",     400},
+        {"500",     500},
+        {"600",     600},
+        {"700",     700},
+        {"800",     800},
+        {"900",     900},
+        {"bold",    PANGO_WEIGHT_LIGHT},
+        {"bolder",  PANGO_WEIGHT_BOLD},
+        {"lighter", PANGO_WEIGHT_ULTRABOLD},
+        {"normal",  PANGO_WEIGHT_NORMAL},
+    };
+    struct keywords *keyword;
 
-    UNSETINHERIT ();
-    return PANGO_WEIGHT_NORMAL;
+    /* TODO: 'bolder' and 'lighter' should be relative to the font-weight of the parent node */
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
 }
 
 static RsvgNode *
@@ -486,15 +541,260 @@ rsvg_parse_mask (const RsvgDefs * defs, const char *str)
 }
 
 static gboolean
-rsvg_parse_overflow (const char *str, gboolean * inherit)
+rsvg_parse_overflow (const char *str, gboolean *result, const RsvgPropSrc prop_src)
 {
-    SETINHERIT ();
-    if (!strcmp (str, "visible") || !strcmp (str, "auto"))
-        return 1;
-    if (!strcmp (str, "hidden") || !strcmp (str, "scroll"))
-        return 0;
-    UNSETINHERIT ();
-    return 0;
+    struct keywords {
+        const char *keyword;
+        gboolean value;
+    };
+    const struct keywords keywords[] = {
+        {"auto",    TRUE},
+        {"hidden",  FALSE},
+        {"scroll",  FALSE},
+        {"visible", TRUE}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_shape_rendering (const char *str, cairo_antialias_t *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        cairo_antialias_t value;
+    };
+    const struct keywords keywords[] = {
+        {"auto",               SHAPE_RENDERING_AUTO},
+        {"crispEdges",         SHAPE_RENDERING_CRISP_EDGES},
+        {"geometricPrecision", SHAPE_RENDERING_GEOMETRIC_PRECISION},
+        {"optimizeSpeed",      SHAPE_RENDERING_OPTIMIZE_SPEED}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_stroke_linecap (const char *str, cairo_line_cap_t *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        cairo_line_cap_t value;
+    };
+    const struct keywords keywords[] = {
+        {"butt",   CAIRO_LINE_CAP_BUTT},
+        {"round",  CAIRO_LINE_CAP_ROUND},
+        {"square", CAIRO_LINE_CAP_SQUARE}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_stroke_linejoin (const char *str, cairo_line_join_t *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        cairo_line_join_t value;
+    };
+    const struct keywords keywords[] = {
+        {"bevel", CAIRO_LINE_JOIN_BEVEL},
+        {"miter", CAIRO_LINE_JOIN_MITER},
+        {"round", CAIRO_LINE_JOIN_ROUND}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_stroke_miterlimit (const char *str, double *result, const RsvgPropSrc prop_src)
+{
+    double length;
+    const char *end;
+
+    g_assert (str != NULL);
+
+    length = _rsvg_parse_number (str, &end, prop_src);
+    if (str == end || *end != '\0' || length < 1.0)
+        return FALSE;
+
+    *result = length;
+    return TRUE;
+}
+
+gboolean
+rsvg_parse_stroke_width (const char *str, RsvgLength *result, const RsvgPropSrc prop_src)
+{
+    RsvgLength length;
+    const char *end;
+
+    length = _rsvg_parse_length (str, &end, prop_src);
+    if (str == end || *end != '\0' || length.length < 0.0)
+        return FALSE;
+
+    *result = length;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_text_anchor (const char *str, TextAnchor *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        TextAnchor value;
+    };
+    const struct keywords keywords[] = {
+        {"end",    TEXT_ANCHOR_END},
+        {"middle", TEXT_ANCHOR_MIDDLE},
+        {"start",  TEXT_ANCHOR_START}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_text_decoration (const char *str, TextDecoration *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        TextDecoration value;
+    };
+    const struct keywords keywords[] = {
+        {"line-through", TEXT_STRIKE},
+        {"none",         TEXT_NORMAL},
+        {"overline",     TEXT_UNDERLINE},
+        {"underline",    TEXT_STRIKE}
+        /* 'blink' is not supported */
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    if (keyword->value == TEXT_NORMAL)
+        *result = TEXT_NORMAL;
+    else
+        *result |= keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_text_rendering (const char *str, cairo_antialias_t *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        cairo_antialias_t value;
+    };
+    const struct keywords keywords[] = {
+        {"auto",               TEXT_RENDERING_AUTO},
+        {"geometricPrecision", TEXT_RENDERING_GEOMETRIC_PRECISION},
+        {"optimizeLegibility", TEXT_RENDERING_OPTIMIZE_LEGIBILITY},
+        {"optimizeSpeed",      TEXT_RENDERING_OPTIMIZE_SPEED}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_unicode_bidi (const char *str, UnicodeBidi *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        UnicodeBidi value;
+    };
+    const struct keywords keywords[] = {
+        {"bidi-override", UNICODE_BIDI_OVERRIDE},
+        {"embed",         UNICODE_BIDI_EMBED},
+        {"normal",        UNICODE_BIDI_NORMAL}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
+}
+
+static gboolean
+rsvg_parse_comp_op (const char *str, cairo_operator_t *result, const RsvgPropSrc prop_src)
+{
+    struct keywords {
+        const char *keyword;
+        cairo_operator_t value;
+    };
+    const struct keywords keywords[] = {
+        {"clear",       CAIRO_OPERATOR_CLEAR},
+        {"color-burn",  CAIRO_OPERATOR_COLOR_BURN},
+        {"color-dodge", CAIRO_OPERATOR_COLOR_DODGE},
+        {"darken",      CAIRO_OPERATOR_DARKEN},
+        {"difference",  CAIRO_OPERATOR_DIFFERENCE},
+        {"dst",         CAIRO_OPERATOR_DEST},
+        {"dst-atop",    CAIRO_OPERATOR_DEST_ATOP},
+        {"dst-in",      CAIRO_OPERATOR_DEST_IN},
+        {"dst-out",     CAIRO_OPERATOR_DEST_OUT},
+        {"dst-over",    CAIRO_OPERATOR_DEST_OVER},
+        {"exclusion",   CAIRO_OPERATOR_EXCLUSION},
+        {"hard-light",  CAIRO_OPERATOR_HARD_LIGHT},
+        {"lighten",     CAIRO_OPERATOR_LIGHTEN},
+        {"multiply",    CAIRO_OPERATOR_MULTIPLY},
+        {"overlay",     CAIRO_OPERATOR_OVERLAY},
+        {"plus",        CAIRO_OPERATOR_ADD},
+        {"screen",      CAIRO_OPERATOR_SCREEN},
+        {"soft-light",  CAIRO_OPERATOR_SOFT_LIGHT},
+        {"src",         CAIRO_OPERATOR_SOURCE},
+        {"src-atop",    CAIRO_OPERATOR_ATOP},
+        {"src-in",      CAIRO_OPERATOR_IN},
+        {"src-out",     CAIRO_OPERATOR_OUT},
+        {"src-over",    CAIRO_OPERATOR_OVER},
+        {"xor",         CAIRO_OPERATOR_XOR}
+    };
+    struct keywords *keyword;
+
+    keyword = rsvg_match_keyword (str, keywords, prop_src);
+    if (keyword == NULL)
+        return FALSE;
+
+    *result = keyword->value;
+    return TRUE;
 }
 
 /* Parse a CSS2 style argument, setting the SVG context attributes. */
@@ -526,16 +826,13 @@ rsvg_parse_prop (RsvgHandle * ctx,
     } else if (g_str_equal (name, "clip")) {
         /* TODO */
     } else if (g_str_equal (name, "clip-path")) {
+        /* TODO */
         state->clip_path_ref = rsvg_parse_clip_path (ctx->priv->defs, value);
     } else if (g_str_equal (name, "clip-rule")) {
-        state->has_clip_rule = TRUE;
-        if (g_str_equal (value, "nonzero"))
-            state->clip_rule = CAIRO_FILL_RULE_WINDING;
-        else if (g_str_equal (value, "evenodd"))
-            state->clip_rule = CAIRO_FILL_RULE_EVEN_ODD;
-        else
-            state->has_clip_rule = FALSE;
+        if (rsvg_parse_fill_rule (value, &state->clip_rule, prop_src))
+            state->has_clip_rule = TRUE;
     } else if (g_str_equal (name, "color")) {
+        /* TODO */
         state->current_color = rsvg_css_parse_color (value, &state->has_current_color);
     } else if (g_str_equal (name, "color-interpolation")) {
         /* TODO */
@@ -548,71 +845,66 @@ rsvg_parse_prop (RsvgHandle * ctx,
     } else if (g_str_equal (name, "cursor")) {
         /* TODO */
     } else if (g_str_equal (name, "direction")) {
-        state->has_text_dir = TRUE;
-        if (g_str_equal (value, "inherit")) {
-            state->text_dir = PANGO_DIRECTION_LTR;
-            state->has_text_dir = FALSE;
-        } else if (g_str_equal (value, "rtl"))
-            state->text_dir = PANGO_DIRECTION_RTL;
-        else                    /* ltr */
-            state->text_dir = PANGO_DIRECTION_LTR;
+        if (rsvg_parse_direction (value, &state->text_dir, prop_src))
+            state->has_text_dir = TRUE;
     } else if (g_str_equal (name, "display")) {
+        /* TODO */
         state->has_visible = TRUE;
         if (g_str_equal (value, "none"))
             state->visible = FALSE;
-        else if (!g_str_equal (value, "inherit") != 0)
-            state->visible = TRUE;
         else
-            state->has_visible = FALSE;
+            state->visible = TRUE;
     } else if (g_str_equal (name, "dominant-baseline")) {
         /* TODO */
     } else if (g_str_equal (name, "enable-background")) {
+        /* TODO */
         if (g_str_equal (value, "new"))
             state->enable_background = RSVG_ENABLE_BACKGROUND_NEW;
         else
             state->enable_background = RSVG_ENABLE_BACKGROUND_ACCUMULATE;
     } else if (g_str_equal (name, "fill")) {
+        /* TODO */
         RsvgPaintServer *fill = state->fill;
         state->fill =
             rsvg_parse_paint_server (&state->has_fill_server, ctx->priv->defs, value, 0);
         rsvg_paint_server_unref (fill);
     } else if (g_str_equal (name, "fill-opacity")) {
-        state->fill_opacity = rsvg_css_parse_opacity (value);
-        state->has_fill_opacity = TRUE;
+        if (_rsvg_parse_opacity (value, &state->fill_opacity, prop_src))
+            state->has_fill_opacity = TRUE;
     } else if (g_str_equal (name, "fill-rule")) {
-        state->has_fill_rule = TRUE;
-        if (g_str_equal (value, "nonzero"))
-            state->fill_rule = CAIRO_FILL_RULE_WINDING;
-        else if (g_str_equal (value, "evenodd"))
-            state->fill_rule = CAIRO_FILL_RULE_EVEN_ODD;
-        else
-            state->has_fill_rule = FALSE;
+        if (rsvg_parse_fill_rule (value, &state->fill_rule, prop_src))
+            state->has_fill_rule = TRUE;
     } else if (g_str_equal (name, "filter")) {
+        /* TODO */
         state->filter = rsvg_parse_filter (ctx->priv->defs, value);
     } else if (g_str_equal (name, "flood-color")) {
+        /* TODO */
         state->flood_color = rsvg_css_parse_color (value, &state->has_flood_color);
     } else if (g_str_equal (name, "flood-opacity")) {
-        state->flood_opacity = rsvg_css_parse_opacity (value);
-        state->has_flood_opacity = TRUE;
+        if (_rsvg_parse_opacity (value, &state->flood_opacity, prop_src))
+            state->has_flood_opacity = TRUE;
     } else if (g_str_equal (name, "font")) {
         /* TODO */
     } else if (g_str_equal (name, "font-family")) {
-        char *save = g_strdup (rsvg_parse_font_family (value, &state->has_font_family));
-        g_free (state->font_family);
-        state->font_family = save;
+        if (rsvg_parse_font_family (value, &state->font_family, prop_src))
+            state->has_font_family = TRUE;
     } else if (g_str_equal (name, "font-size")) {
-        rsvg_parse_font_size (value, &state->font_size, prop_src);
-        state->has_font_size = TRUE;
+        if (rsvg_parse_font_size (value, &state->font_size, prop_src))
+            state->has_font_size = TRUE;
     } else if (g_str_equal (name, "font-size-adjust")) {
         /* TODO */
     } else if (g_str_equal (name, "font-stretch")) {
-        state->font_stretch = rsvg_parse_font_stretch (value, &state->has_font_stretch);
+        if (rsvg_parse_font_stretch (value, &state->font_stretch, prop_src))
+            state->has_font_stretch = TRUE;
     } else if (g_str_equal (name, "font-style")) {
-        state->font_style = rsvg_parse_font_style (value, &state->has_font_style);
+        if (rsvg_parse_font_style (value, &state->font_style, prop_src))
+            state->has_font_style = TRUE;
     } else if (g_str_equal (name, "font-variant")) {
-        state->font_variant = rsvg_parse_font_variant (value, &state->has_font_variant);
+        if (rsvg_parse_font_variant (value, &state->font_variant, prop_src))
+            state->has_font_variant = TRUE;
     } else if (g_str_equal (name, "font-weight")) {
-        state->font_weight = rsvg_parse_font_weight (value, &state->has_font_weight);
+        if (rsvg_parse_font_weight (value, &state->font_weight, prop_src))
+            state->has_font_weight = TRUE;
     } else if (g_str_equal (name, "glyph-orientation-horizontal")) {
         /* TODO */
     } else if (g_str_equal (name, "glyph-orientation-vertical")) {
@@ -622,56 +914,52 @@ rsvg_parse_prop (RsvgHandle * ctx,
     } else if (g_str_equal (name, "kerning")) {
         /* TODO */
     } else if (g_str_equal (name, "letter-spacing")) {
-        state->has_letter_spacing = TRUE;
-        _rsvg_parse_prop_length (value, &state->letter_spacing, prop_src);
+        if (_rsvg_parse_prop_length (value, &state->letter_spacing, prop_src))
+            state->has_letter_spacing = TRUE;
     } else if (g_str_equal (name, "lighting-color")) {
         /* TODO */
     } else if (g_str_equal (name, "marker")) {
         /* TODO */
     } else if (g_str_equal (name, "marker-start")) {
+        /* TODO */
         state->startMarker = rsvg_parse_marker (ctx->priv->defs, value);
         state->has_startMarker = TRUE;
     } else if (g_str_equal (name, "marker-mid")) {
+        /* TODO */
         state->middleMarker = rsvg_parse_marker (ctx->priv->defs, value);
         state->has_middleMarker = TRUE;
     } else if (g_str_equal (name, "marker-end")) {
+        /* TODO */
         state->endMarker = rsvg_parse_marker (ctx->priv->defs, value);
         state->has_endMarker = TRUE;
     } else if (g_str_equal (name, "mask")) {
+        /* TODO */
         state->mask = rsvg_parse_mask (ctx->priv->defs, value);
     } else if (g_str_equal (name, "opacity")) {
-        state->opacity = rsvg_css_parse_opacity (value);
+        if (_rsvg_parse_opacity (value, &state->opacity, prop_src))
+            ; /* there is no has_opacity */
     } else if (g_str_equal (name, "overflow")) {
-        if (!g_str_equal (value, "inherit")) {
-            state->overflow = rsvg_parse_overflow (value, &state->has_overflow);
-        }
+        if (rsvg_parse_overflow (value, &state->overflow, prop_src))
+            state->has_overflow = TRUE;
     } else if (g_str_equal (name, "pointer-events")) {
         /* TODO */
     } else if (g_str_equal (name, "shape-rendering")) {
-        state->has_shape_rendering_type = TRUE;
-        if (g_str_equal (value, "auto") || g_str_equal (value, "default"))
-            state->shape_rendering_type = SHAPE_RENDERING_AUTO;
-        else if (g_str_equal (value, "optimizeSpeed"))
-            state->shape_rendering_type = SHAPE_RENDERING_OPTIMIZE_SPEED;
-        else if (g_str_equal (value, "crispEdges"))
-            state->shape_rendering_type = SHAPE_RENDERING_CRISP_EDGES;
-        else if (g_str_equal (value, "geometricPrecision"))
-            state->shape_rendering_type = SHAPE_RENDERING_GEOMETRIC_PRECISION;
+        if (rsvg_parse_shape_rendering (value, &state->shape_rendering_type, prop_src))
+            state->has_shape_rendering_type = TRUE;
     } else if (g_str_equal (name, "stop-color")) {
-        if (!g_str_equal (value, "inherit")) {
-            state->stop_color = rsvg_css_parse_color (value, &state->has_stop_color);
-        }
+        /* TODO */
+        state->stop_color = rsvg_css_parse_color (value, &state->has_stop_color);
     } else if (g_str_equal (name, "stop-opacity")) {
-        if (!g_str_equal (value, "inherit")) {
+        if (_rsvg_parse_opacity (value, &state->stop_opacity, prop_src))
             state->has_stop_opacity = TRUE;
-            state->stop_opacity = rsvg_css_parse_opacity (value);
-        }
     } else if (g_str_equal (name, "stroke")) {
+        /* TODO */
         RsvgPaintServer *stroke = state->stroke;
         state->stroke =
             rsvg_parse_paint_server (&state->has_stroke_server, ctx->priv->defs, value, 0);
         rsvg_paint_server_unref (stroke);
     } else if (g_str_equal (name, "stroke-dasharray")) {
+        /* TODO */
         state->has_dash = TRUE;
         if (g_str_equal (value, "none")) {
             if (state->dash.n_dash != 0) {
@@ -725,96 +1013,43 @@ rsvg_parse_prop (RsvgHandle * ctx,
             }
         }
     } else if (g_str_equal (name, "stroke-dashoffset")) {
-        if (_rsvg_parse_prop_length (value, &state->dash.offset, prop_src)) {
+        if (_rsvg_parse_prop_length (value, &state->dash.offset, prop_src))
             state->has_dashoffset = TRUE;
-            if (state->dash.offset.length < 0.)
-                state->dash.offset.length = 0.;
-        }
+        /* TODO: does a negative value cause problems with cairo? */
     } else if (g_str_equal (name, "stroke-linecap")) {
-        state->has_cap = TRUE;
-        if (g_str_equal (value, "butt"))
-            state->cap = CAIRO_LINE_CAP_BUTT;
-        else if (g_str_equal (value, "round"))
-            state->cap = CAIRO_LINE_CAP_ROUND;
-        else if (g_str_equal (value, "square"))
-            state->cap = CAIRO_LINE_CAP_SQUARE;
-        else
-            g_warning (_("unknown line cap style %s\n"), value);
-    } else if (g_str_equal (name, "stroke-miterlimit")) {
-        state->has_miter_limit = TRUE;
-        state->miter_limit = g_ascii_strtod (value, NULL);
-    } else if (g_str_equal (name, "stroke-opacity")) {
-        state->stroke_opacity = rsvg_css_parse_opacity (value);
-        state->has_stroke_opacity = TRUE;
+       if (rsvg_parse_stroke_linecap (value, &state->cap, prop_src))
+            state->has_cap = TRUE;
     } else if (g_str_equal (name, "stroke-linejoin")) {
-        state->has_join = TRUE;
-        if (g_str_equal (value, "miter"))
-            state->join = CAIRO_LINE_JOIN_MITER;
-        else if (g_str_equal (value, "round"))
-            state->join = CAIRO_LINE_JOIN_ROUND;
-        else if (g_str_equal (value, "bevel"))
-            state->join = CAIRO_LINE_JOIN_BEVEL;
-        else
-            g_warning (_("unknown line join style %s\n"), value);
+        if (rsvg_parse_stroke_linejoin (value, &state->join, prop_src))
+            state->has_join = TRUE;
+    } else if (g_str_equal (name, "stroke-miterlimit")) {
+        if (rsvg_parse_stroke_miterlimit (value, &state->miter_limit, prop_src))
+            state->has_miter_limit = TRUE;
+    } else if (g_str_equal (name, "stroke-opacity")) {
+        if (_rsvg_parse_opacity (value, &state->stroke_opacity, prop_src))
+            state->has_stroke_opacity = TRUE;
     } else if (g_str_equal (name, "stroke-width")) {
-        _rsvg_parse_prop_length (value, &state->stroke_width, prop_src);
-        state->has_stroke_width = TRUE;
+        if (rsvg_parse_stroke_width (value, &state->stroke_width, prop_src))
+            state->has_stroke_width = TRUE;
     } else if (g_str_equal (name, "text-anchor")) {
-        state->has_text_anchor = TRUE;
-        if (g_str_equal (value, "inherit")) {
-            state->text_anchor = TEXT_ANCHOR_START;
-            state->has_text_anchor = FALSE;
-        } else {
-            if (strstr (value, "start"))
-                state->text_anchor = TEXT_ANCHOR_START;
-            else if (strstr (value, "middle"))
-                state->text_anchor = TEXT_ANCHOR_MIDDLE;
-            else if (strstr (value, "end"))
-                state->text_anchor = TEXT_ANCHOR_END;
-        }
+        if (rsvg_parse_text_anchor (value, &state->text_anchor, prop_src))
+            state->has_text_anchor = TRUE;
     } else if (g_str_equal (name, "text-decoration")) {
-        if (g_str_equal (value, "inherit")) {
-            state->has_font_decor = FALSE;
-            state->font_decor = TEXT_NORMAL;
-        } else {
-            if (strstr (value, "underline"))
-                state->font_decor |= TEXT_UNDERLINE;
-            if (strstr (value, "overline"))
-                state->font_decor |= TEXT_OVERLINE;
-            if (strstr (value, "strike") || strstr (value, "line-through"))     /* strike though or line-through */
-                state->font_decor |= TEXT_STRIKE;
+        if (rsvg_parse_text_decoration (value, &state->font_decor, prop_src))
             state->has_font_decor = TRUE;
-        }
     } else if (g_str_equal (name, "text-rendering")) {
-        state->has_text_rendering_type = TRUE;
-
-        if (g_str_equal (value, "auto") || g_str_equal (value, "default"))
-            state->text_rendering_type = TEXT_RENDERING_AUTO;
-        else if (g_str_equal (value, "optimizeSpeed"))
-            state->text_rendering_type = TEXT_RENDERING_OPTIMIZE_SPEED;
-        else if (g_str_equal (value, "optimizeLegibility"))
-            state->text_rendering_type = TEXT_RENDERING_OPTIMIZE_LEGIBILITY;
-        else if (g_str_equal (value, "geometricPrecision"))
-            state->text_rendering_type = TEXT_RENDERING_GEOMETRIC_PRECISION;
+        if (rsvg_parse_text_rendering (value, &state->text_rendering_type, prop_src))
+            state->has_text_rendering_type = TRUE;
     } else if (g_str_equal (name, "unicode-bidi")) {
-        state->has_unicode_bidi = TRUE;
-        if (g_str_equal (value, "inherit")) {
-            state->unicode_bidi = UNICODE_BIDI_NORMAL;
-            state->has_unicode_bidi = FALSE;
-        } else if (g_str_equal (value, "embed"))
-            state->unicode_bidi = UNICODE_BIDI_EMBED;
-        else if (g_str_equal (value, "bidi-override"))
-            state->unicode_bidi = UNICODE_BIDI_OVERRIDE;
-        else                    /* normal */
-            state->unicode_bidi = UNICODE_BIDI_NORMAL;
+        if (rsvg_parse_unicode_bidi (value, &state->unicode_bidi, prop_src))
+            state->has_unicode_bidi = TRUE;
     } else if (g_str_equal (name, "visibility")) {
+        /* TODO */
         state->has_visible = TRUE;
         if (g_str_equal (value, "visible"))
             state->visible = TRUE;
-        else if (!g_str_equal (value, "inherit") != 0)
-            state->visible = FALSE;     /* collapse or hidden */
         else
-            state->has_visible = FALSE;
+            state->visible = FALSE; /* collapse or hidden */
     } else if (g_str_equal (name, "pointer-events")) {
         /* TODO */
     } else if (g_str_equal (name, "writing-mode")) {
@@ -822,12 +1057,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
 
         state->has_text_dir = TRUE;
         state->has_text_gravity = TRUE;
-        if (g_str_equal (value, "inherit")) {
-            state->text_dir = PANGO_DIRECTION_LTR;
-            state->has_text_dir = FALSE;
-            state->text_gravity = PANGO_GRAVITY_SOUTH;
-            state->has_text_gravity = FALSE;
-        } else if (g_str_equal (value, "lr-tb") || g_str_equal (value, "lr")) {
+        if (g_str_equal (value, "lr-tb") || g_str_equal (value, "lr")) {
             state->text_dir = PANGO_DIRECTION_LTR;
             state->text_gravity = PANGO_GRAVITY_SOUTH;
         } else if (g_str_equal (value, "rl-tb") || g_str_equal (value, "rl")) {
@@ -838,11 +1068,13 @@ rsvg_parse_prop (RsvgHandle * ctx,
             state->text_gravity = PANGO_GRAVITY_EAST;
         }
     } else if (g_str_equal (name, "xml:lang")) {
+        /* TODO */
         char *save = g_strdup (value);
         g_free (state->lang);
         state->lang = save;
         state->has_lang = TRUE;
     } else if (g_str_equal (name, "xml:space")) {
+        /* TODO */
         state->has_space_preserve = TRUE;
         if (g_str_equal (value, "default"))
             state->space_preserve = FALSE;
@@ -851,55 +1083,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
         else
             state->space_preserve = FALSE;
     } else if (g_str_equal (name, "comp-op")) {
-        if (g_str_equal (value, "clear"))
-            state->comp_op = CAIRO_OPERATOR_CLEAR;
-        else if (g_str_equal (value, "src"))
-            state->comp_op = CAIRO_OPERATOR_SOURCE;
-        else if (g_str_equal (value, "dst"))
-            state->comp_op = CAIRO_OPERATOR_DEST;
-        else if (g_str_equal (value, "src-over"))
-            state->comp_op = CAIRO_OPERATOR_OVER;
-        else if (g_str_equal (value, "dst-over"))
-            state->comp_op = CAIRO_OPERATOR_DEST_OVER;
-        else if (g_str_equal (value, "src-in"))
-            state->comp_op = CAIRO_OPERATOR_IN;
-        else if (g_str_equal (value, "dst-in"))
-            state->comp_op = CAIRO_OPERATOR_DEST_IN;
-        else if (g_str_equal (value, "src-out"))
-            state->comp_op = CAIRO_OPERATOR_OUT;
-        else if (g_str_equal (value, "dst-out"))
-            state->comp_op = CAIRO_OPERATOR_DEST_OUT;
-        else if (g_str_equal (value, "src-atop"))
-            state->comp_op = CAIRO_OPERATOR_ATOP;
-        else if (g_str_equal (value, "dst-atop"))
-            state->comp_op = CAIRO_OPERATOR_DEST_ATOP;
-        else if (g_str_equal (value, "xor"))
-            state->comp_op = CAIRO_OPERATOR_XOR;
-        else if (g_str_equal (value, "plus"))
-            state->comp_op = CAIRO_OPERATOR_ADD;
-        else if (g_str_equal (value, "multiply"))
-            state->comp_op = CAIRO_OPERATOR_MULTIPLY;
-        else if (g_str_equal (value, "screen"))
-            state->comp_op = CAIRO_OPERATOR_SCREEN;
-        else if (g_str_equal (value, "overlay"))
-            state->comp_op = CAIRO_OPERATOR_OVERLAY;
-        else if (g_str_equal (value, "darken"))
-            state->comp_op = CAIRO_OPERATOR_DARKEN;
-        else if (g_str_equal (value, "lighten"))
-            state->comp_op = CAIRO_OPERATOR_LIGHTEN;
-        else if (g_str_equal (value, "color-dodge"))
-            state->comp_op = CAIRO_OPERATOR_COLOR_DODGE;
-        else if (g_str_equal (value, "color-burn"))
-            state->comp_op = CAIRO_OPERATOR_COLOR_BURN;
-        else if (g_str_equal (value, "hard-light"))
-            state->comp_op = CAIRO_OPERATOR_HARD_LIGHT;
-        else if (g_str_equal (value, "soft-light"))
-            state->comp_op = CAIRO_OPERATOR_SOFT_LIGHT;
-        else if (g_str_equal (value, "difference"))
-            state->comp_op = CAIRO_OPERATOR_DIFFERENCE;
-        else if (g_str_equal (value, "exclusion"))
-            state->comp_op = CAIRO_OPERATOR_EXCLUSION;
-        else
-            state->comp_op = CAIRO_OPERATOR_OVER;
+        if (rsvg_parse_comp_op (value, &state->comp_op, prop_src))
+            ; /* there is no has_comp_op */
     }
 }
