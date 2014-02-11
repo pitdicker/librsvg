@@ -356,62 +356,6 @@ rsvg_css_parse_angle (const char *str)
     return degrees;
 }
 
-/*
-  <frequency>: Frequency values are used with aural properties. The normative
-  definition of frequency values can be found in [CSS2-AURAL]. A frequency
-  value is a <number> immediately followed by a frequency unit identifier.
-  Frequency unit identifiers are:
-
-    * Hz: Hertz
-    * kHz: kilo Hertz
-
-    Frequency values may not be negative.
-*/
-double
-rsvg_css_parse_frequency (const char *str)
-{
-    double f_hz;
-    char *end_ptr;
-
-    f_hz = g_ascii_strtod (str, &end_ptr);
-
-    /* todo: error condition - figure out how to best represent it */
-    if ((f_hz == -HUGE_VAL || f_hz == HUGE_VAL) && (ERANGE == errno))
-        return 0.0;
-
-    if (end_ptr && !strcmp (end_ptr, "kHz"))
-        return f_hz * 1000.;
-
-    return f_hz;
-}
-
-/*
-  <time>: A time value is a <number> immediately followed by a time unit
-  identifier. Time unit identifiers are:
-
-  * ms: milliseconds
-  * s: seconds
-
-  Time values are used in CSS properties and may not be negative.
-*/
-double
-rsvg_css_parse_time (const char *str)
-{
-    double ms;
-    char *end_ptr;
-
-    ms = g_ascii_strtod (str, &end_ptr);
-
-    /* todo: error condition - figure out how to best represent it */
-    if ((ms == -HUGE_VAL || ms == HUGE_VAL) && (ERANGE == errno))
-        return 0.0;
-
-    if (end_ptr && !strcmp (end_ptr, "s"))
-        return ms * 1000.;
-
-    return ms;
-}
-
 #if !defined(HAVE_STRTOK_R)
 
 static char *

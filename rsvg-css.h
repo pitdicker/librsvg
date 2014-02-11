@@ -51,10 +51,6 @@ guint32     rsvg_css_parse_color        (const char *str, gboolean * inherit);
 G_GNUC_INTERNAL
 double      rsvg_css_parse_angle        (const char *str);
 G_GNUC_INTERNAL
-double      rsvg_css_parse_frequency    (const char *str);
-G_GNUC_INTERNAL
-double      rsvg_css_parse_time         (const char *str);
-G_GNUC_INTERNAL
 RsvgViewBox   rsvg_css_parse_vbox           (const char *vbox);
 G_GNUC_INTERNAL
 void          rsvg_css_parse_number_optional_number (const char *str, double *x, double *y);
