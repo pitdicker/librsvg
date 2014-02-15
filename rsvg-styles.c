@@ -76,89 +76,69 @@ rsvg_dpi_percentage (RsvgHandle * ctx)
 void
 rsvg_state_init (RsvgState * state)
 {
+    /* TODO: remove memset */
     memset (state, 0, sizeof (RsvgState));
 
     state->parent = NULL;
     cairo_matrix_init_identity (&state->affine);
     cairo_matrix_init_identity (&state->personal_affine);
-    state->mask = NULL;
-    state->opacity = 0xff;
-    state->fill = rsvg_parse_paint_server (NULL, NULL, "#000", 0);
-    state->fill_opacity = 0xff;
-    state->stroke_opacity = 0xff;
-    state->stroke_width = (RsvgLength) {1.0, RSVG_UNIT_NUMBER};
-    state->stroke_miterlimit = 4;
-    state->stroke_linecap = CAIRO_LINE_CAP_BUTT;
-    state->stroke_linejoin = CAIRO_LINE_JOIN_MITER;
-    state->stop_opacity = 0xff;
-    state->fill_rule = CAIRO_FILL_RULE_WINDING;
-    state->clip_rule = CAIRO_FILL_RULE_WINDING;
+
+    /* presentation attributes */
+    state->clip_path         = NULL;
+    state->clip_rule         = CAIRO_FILL_RULE_WINDING;
+    state->color             = 0x000000; /* black */
+    state->direction         = PANGO_DIRECTION_LTR;
     state->enable_background = RSVG_ENABLE_BACKGROUND_ACCUMULATE;
-    state->comp_op = CAIRO_OPERATOR_OVER;
-    state->overflow = FALSE;
-    state->flood_color = 0;
-    state->flood_opacity = 255;
+    state->fill              = rsvg_parse_paint_server (NULL, NULL, "#000", 0);
+    state->fill_opacity      = 0xff;
+    state->fill_rule         = CAIRO_FILL_RULE_WINDING;
+    state->filter            = NULL;
+    state->flood_color       = 0x000000; /* black */
+    state->flood_opacity     = 0xff;
+    state->font_family       = g_strdup (RSVG_DEFAULT_FONT);
+    state->font_size         = (RsvgLength) {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX};
+    state->font_stretch      = PANGO_STRETCH_NORMAL;
+    state->font_style        = PANGO_STYLE_NORMAL;
+    state->font_variant      = PANGO_VARIANT_NORMAL;
+    state->font_weight       = PANGO_WEIGHT_NORMAL;
+    state->letter_spacing    = (RsvgLength) {0.0, RSVG_UNIT_PX};
+    state->marker_start      = NULL;
+    state->marker_mid        = NULL;
+    state->marker_end        = NULL;
+    state->mask              = NULL;
+    state->opacity           = 0xff;
+    state->overflow          = FALSE;
+    state->shape_rendering   = SHAPE_RENDERING_AUTO;
+    state->stop_color        = 0x000000; /* black */
+    state->stop_opacity      = 0xff;
+    state->stroke            = NULL;
+    state->stroke_linecap    = CAIRO_LINE_CAP_BUTT;
+    state->stroke_linejoin   = CAIRO_LINE_JOIN_MITER;
+    state->stroke_miterlimit = 4.0;
+    state->stroke_opacity    = 0xff;
+    state->stroke_width      = (RsvgLength) {1.0, RSVG_UNIT_NUMBER};
+    state->text_anchor       = TEXT_ANCHOR_START;
+    state->text_decoration   = TEXT_DECORATION_NONE;
+    state->text_rendering    = TEXT_RENDERING_AUTO;
+    state->unicode_bidi      = UNICODE_BIDI_NORMAL;
 
-    state->font_family = g_strdup (RSVG_DEFAULT_FONT);
-    state->font_size = (RsvgLength) {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX};
-    state->font_style = PANGO_STYLE_NORMAL;
-    state->font_variant = PANGO_VARIANT_NORMAL;
-    state->font_weight = PANGO_WEIGHT_NORMAL;
-    state->font_stretch = PANGO_STRETCH_NORMAL;
-    state->direction = PANGO_DIRECTION_LTR;
-    state->text_gravity = PANGO_GRAVITY_SOUTH;
-    state->unicode_bidi = UNICODE_BIDI_NORMAL;
-    state->text_anchor = TEXT_ANCHOR_START;
-    state->letter_spacing = (RsvgLength) {0.0, RSVG_UNIT_PX};
-    state->visible = TRUE;
-    state->cond_true = TRUE;
-    state->filter = NULL;
-    state->clip_path = NULL;
-    state->marker_start = NULL;
-    state->marker_mid = NULL;
-    state->marker_end = NULL;
+    /* TODO */
+    state->text_gravity      = PANGO_GRAVITY_SOUTH;
+    state->visible           = TRUE;
+    state->dash              = (struct _RsvgVpathDash) {
+                               .offset = (RsvgLength) {1.0, RSVG_UNIT_NUMBER},
+                               .n_dash = 0,
+                               .dash = NULL};
 
-    state->has_current_color = FALSE;
-    state->has_flood_color = FALSE;
-    state->has_flood_opacity = FALSE;
-    state->has_fill_server = FALSE;
-    state->has_fill_opacity = FALSE;
-    state->has_fill_rule = FALSE;
-    state->has_clip_rule = FALSE;
-    state->has_stroke_server = FALSE;
-    state->has_stroke_opacity = FALSE;
-    state->has_stroke_width = FALSE;
-    state->has_miter_limit = FALSE;
-    state->has_cap = FALSE;
-    state->has_join = FALSE;
-    state->has_dash = FALSE;
-    state->has_dashoffset = FALSE;
-    state->has_visible = FALSE;
-    state->has_cond = FALSE;
-    state->has_stop_color = FALSE;
-    state->has_stop_opacity = FALSE;
-    state->has_font_size = FALSE;
-    state->has_font_family = FALSE;
-    state->has_lang = FALSE;
-    state->has_font_style = FALSE;
-    state->has_font_variant = FALSE;
-    state->has_font_weight = FALSE;
-    state->has_font_stretch = FALSE;
-    state->has_font_decor = FALSE;
-    state->has_text_dir = FALSE;
-    state->has_text_gravity = FALSE;
-    state->has_unicode_bidi = FALSE;
-    state->has_text_anchor = FALSE;
-    state->has_letter_spacing = FALSE;
-    state->has_startMarker = FALSE;
-    state->has_middleMarker = FALSE;
-    state->has_endMarker = FALSE;
-    state->has_overflow = FALSE;
+    /* core xml attributes */
+    state->lang              = NULL;
+    state->space_preserve    = FALSE;
 
-    state->shape_rendering = SHAPE_RENDERING_AUTO;
-    state->has_shape_rendering_type = FALSE;
-    state->text_rendering = TEXT_RENDERING_AUTO;
-    state->has_text_rendering_type = FALSE;
+    /* svg 1.2 attribute */
+    state->comp_op           = CAIRO_OPERATOR_OVER;
+
+    /* ??? */
+    state->cond_true         = TRUE;
 
     state->styles = g_hash_table_new_full (g_str_hash, g_str_equal,
                                            g_free, (GDestroyNotify) style_value_data_free);
