@@ -198,30 +198,30 @@ void
 rsvg_render_markers (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
 {
     RsvgState *state;
-    RsvgMarker *startmarker, *middlemarker, *endmarker;
+    RsvgMarker *marker_start, *marker_mid, *marker_end;
     double linewidth;
 
     double indirx, indiry, outdirx, outdiry;
-    double nextindirx, nextindiry, tempdirx, tempdiry;
+    double tempdirx, tempdiry;
     double angle;
     guint i, number_of_items;
 
     state = rsvg_current_state (ctx);
     linewidth = _rsvg_css_normalize_length (&state->stroke_width, ctx, 'o');
 
-    startmarker = (RsvgMarker *) state->startMarker;
-    middlemarker = (RsvgMarker *) state->middleMarker;
-    endmarker = (RsvgMarker *) state->endMarker;
+    marker_start = (RsvgMarker *) state->marker_start;
+    marker_mid = (RsvgMarker *) state->marker_mid;
+    marker_end = (RsvgMarker *) state->marker_end;
 
     if (linewidth == 0.) {
         /* If a marker is scaled to the current lineweight, do not render it if
            the lineweight is 0.0 */
-        if (startmarker && startmarker->bbox)
-            startmarker = NULL;
-        if (middlemarker && middlemarker->bbox)
-            middlemarker = NULL;
-        if (endmarker && endmarker->bbox)
-            endmarker = NULL;
+        if (marker_start && marker_start->bbox)
+            marker_start = NULL;
+        if (marker_mid && marker_mid->bbox)
+            marker_mid = NULL;
+        if (marker_end && marker_end->bbox)
+            marker_end = NULL;
     }
 
     if (path == NULL)
@@ -229,9 +229,9 @@ rsvg_render_markers (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
 
     number_of_items = path[0].att.path.number_of_items;
 
-    if (startmarker) {
+    if (marker_start) {
         angle = 0.;
-        if (startmarker->orientAuto) {
+        if (marker_start->orientAuto) {
             rsvg_path_get_segm_dir (path, 1, &outdirx, &outdiry,
                                     &tempdirx, &tempdiry);
 
@@ -244,14 +244,14 @@ rsvg_render_markers (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
                 angle = atan2 (outdiry, outdirx);
             }
         }
-        rsvg_marker_render (startmarker, path[0].x, path[0].y,
+        rsvg_marker_render (marker_start, path[0].x, path[0].y,
                             angle, linewidth, ctx);
     }
 
-    if (middlemarker) {
+    if (marker_mid) {
         angle = 0.;
         for (i = 1; i < number_of_items - 1; i++) {
-            if (middlemarker->orientAuto) {
+            if (marker_mid->orientAuto) {
                 if ((path[i].type == PATHSEG_MOVETO_ABS ||
                       path[i].type == PATHSEG_MOVETO_REL) &&
                       path[i].att.subpath.next_length != 0) {
@@ -277,15 +277,15 @@ rsvg_render_markers (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
                 angle = rsvg_marker_calc_angle (indirx, indiry, outdirx, outdiry);
                 /* TODO: cache previous outdir */
             }
-            rsvg_marker_render (middlemarker, path[i].x, path[i].y,
+            rsvg_marker_render (marker_mid, path[i].x, path[i].y,
                                 angle, linewidth, ctx);
         }
     }
 
-    if (endmarker) {
+    if (marker_end) {
         i = number_of_items - 1;
         angle = 0.;
-        if (endmarker->orientAuto) {
+        if (marker_end->orientAuto) {
             rsvg_path_get_segm_dir (path, i, &tempdirx, &tempdiry,
                                     &indirx, &indiry);
 
@@ -298,7 +298,7 @@ rsvg_render_markers (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
                 angle = atan2 (indiry, indirx);
             }
         }
-        rsvg_marker_render (endmarker, path[i].x, path[i].y,
+        rsvg_marker_render (marker_end, path[i].x, path[i].y,
                             angle, linewidth, ctx);
 
     }

@@ -646,7 +646,7 @@ rsvg_parse_stroke_miterlimit (const char *str, double *result, const RsvgPropSrc
     return TRUE;
 }
 
-gboolean
+static gboolean
 rsvg_parse_stroke_width (const char *str, RsvgLength *result, const RsvgPropSrc prop_src)
 {
     RsvgLength length;
@@ -690,10 +690,10 @@ rsvg_parse_text_decoration (const char *str, TextDecoration *result, const RsvgP
         TextDecoration value;
     };
     const struct keywords keywords[] = {
-        {"line-through", TEXT_STRIKE},
-        {"none",         TEXT_NORMAL},
-        {"overline",     TEXT_UNDERLINE},
-        {"underline",    TEXT_STRIKE}
+        {"line-through", TEXT_DECORATION_LINE_THROUGH},
+        {"none",         TEXT_DECORATION_NONE},
+        {"overline",     TEXT_DECORATION_OVERLINE},
+        {"underline",    TEXT_DECORATION_UNDERLINE}
         /* 'blink' is not supported */
     };
     struct keywords *keyword;
@@ -702,8 +702,8 @@ rsvg_parse_text_decoration (const char *str, TextDecoration *result, const RsvgP
     if (keyword == NULL)
         return FALSE;
 
-    if (keyword->value == TEXT_NORMAL)
-        *result = TEXT_NORMAL;
+    if (keyword->value == TEXT_DECORATION_NONE)
+        *result = TEXT_DECORATION_NONE;
     else
         *result |= keyword->value;
     return TRUE;
@@ -827,13 +827,13 @@ rsvg_parse_prop (RsvgHandle * ctx,
         /* TODO */
     } else if (g_str_equal (name, "clip-path")) {
         /* TODO */
-        state->clip_path_ref = rsvg_parse_clip_path (ctx->priv->defs, value);
+        state->clip_path = rsvg_parse_clip_path (ctx->priv->defs, value);
     } else if (g_str_equal (name, "clip-rule")) {
         if (rsvg_parse_fill_rule (value, &state->clip_rule, prop_src))
             state->has_clip_rule = TRUE;
     } else if (g_str_equal (name, "color")) {
         /* TODO */
-        state->current_color = rsvg_css_parse_color (value, &state->has_current_color);
+        state->color = rsvg_css_parse_color (value, &state->has_current_color);
     } else if (g_str_equal (name, "color-interpolation")) {
         /* TODO */
     } else if (g_str_equal (name, "color-interpolation-filters")) {
@@ -845,7 +845,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
     } else if (g_str_equal (name, "cursor")) {
         /* TODO */
     } else if (g_str_equal (name, "direction")) {
-        if (rsvg_parse_direction (value, &state->text_dir, prop_src))
+        if (rsvg_parse_direction (value, &state->direction, prop_src))
             state->has_text_dir = TRUE;
     } else if (g_str_equal (name, "display")) {
         /* TODO */
@@ -922,15 +922,15 @@ rsvg_parse_prop (RsvgHandle * ctx,
         /* TODO */
     } else if (g_str_equal (name, "marker-start")) {
         /* TODO */
-        state->startMarker = rsvg_parse_marker (ctx->priv->defs, value);
+        state->marker_start = rsvg_parse_marker (ctx->priv->defs, value);
         state->has_startMarker = TRUE;
     } else if (g_str_equal (name, "marker-mid")) {
         /* TODO */
-        state->middleMarker = rsvg_parse_marker (ctx->priv->defs, value);
+        state->marker_mid = rsvg_parse_marker (ctx->priv->defs, value);
         state->has_middleMarker = TRUE;
     } else if (g_str_equal (name, "marker-end")) {
         /* TODO */
-        state->endMarker = rsvg_parse_marker (ctx->priv->defs, value);
+        state->marker_end = rsvg_parse_marker (ctx->priv->defs, value);
         state->has_endMarker = TRUE;
     } else if (g_str_equal (name, "mask")) {
         /* TODO */
@@ -944,7 +944,7 @@ rsvg_parse_prop (RsvgHandle * ctx,
     } else if (g_str_equal (name, "pointer-events")) {
         /* TODO */
     } else if (g_str_equal (name, "shape-rendering")) {
-        if (rsvg_parse_shape_rendering (value, &state->shape_rendering_type, prop_src))
+        if (rsvg_parse_shape_rendering (value, &state->shape_rendering, prop_src))
             state->has_shape_rendering_type = TRUE;
     } else if (g_str_equal (name, "stop-color")) {
         /* TODO */
@@ -1017,13 +1017,13 @@ rsvg_parse_prop (RsvgHandle * ctx,
             state->has_dashoffset = TRUE;
         /* TODO: does a negative value cause problems with cairo? */
     } else if (g_str_equal (name, "stroke-linecap")) {
-       if (rsvg_parse_stroke_linecap (value, &state->cap, prop_src))
+       if (rsvg_parse_stroke_linecap (value, &state->stroke_linecap, prop_src))
             state->has_cap = TRUE;
     } else if (g_str_equal (name, "stroke-linejoin")) {
-        if (rsvg_parse_stroke_linejoin (value, &state->join, prop_src))
+        if (rsvg_parse_stroke_linejoin (value, &state->stroke_linejoin, prop_src))
             state->has_join = TRUE;
     } else if (g_str_equal (name, "stroke-miterlimit")) {
-        if (rsvg_parse_stroke_miterlimit (value, &state->miter_limit, prop_src))
+        if (rsvg_parse_stroke_miterlimit (value, &state->stroke_miterlimit, prop_src))
             state->has_miter_limit = TRUE;
     } else if (g_str_equal (name, "stroke-opacity")) {
         if (_rsvg_parse_opacity (value, &state->stroke_opacity, prop_src))
@@ -1035,10 +1035,10 @@ rsvg_parse_prop (RsvgHandle * ctx,
         if (rsvg_parse_text_anchor (value, &state->text_anchor, prop_src))
             state->has_text_anchor = TRUE;
     } else if (g_str_equal (name, "text-decoration")) {
-        if (rsvg_parse_text_decoration (value, &state->font_decor, prop_src))
+        if (rsvg_parse_text_decoration (value, &state->text_decoration, prop_src))
             state->has_font_decor = TRUE;
     } else if (g_str_equal (name, "text-rendering")) {
-        if (rsvg_parse_text_rendering (value, &state->text_rendering_type, prop_src))
+        if (rsvg_parse_text_rendering (value, &state->text_rendering, prop_src))
             state->has_text_rendering_type = TRUE;
     } else if (g_str_equal (name, "unicode-bidi")) {
         if (rsvg_parse_unicode_bidi (value, &state->unicode_bidi, prop_src))
@@ -1058,13 +1058,13 @@ rsvg_parse_prop (RsvgHandle * ctx,
         state->has_text_dir = TRUE;
         state->has_text_gravity = TRUE;
         if (g_str_equal (value, "lr-tb") || g_str_equal (value, "lr")) {
-            state->text_dir = PANGO_DIRECTION_LTR;
+            state->direction = PANGO_DIRECTION_LTR;
             state->text_gravity = PANGO_GRAVITY_SOUTH;
         } else if (g_str_equal (value, "rl-tb") || g_str_equal (value, "rl")) {
-            state->text_dir = PANGO_DIRECTION_RTL;
+            state->direction = PANGO_DIRECTION_RTL;
             state->text_gravity = PANGO_GRAVITY_SOUTH;
         } else if (g_str_equal (value, "tb-rl") || g_str_equal (value, "tb")) {
-            state->text_dir = PANGO_DIRECTION_LTR;
+            state->direction = PANGO_DIRECTION_LTR;
             state->text_gravity = PANGO_GRAVITY_EAST;
         }
     } else if (g_str_equal (name, "xml:lang")) {

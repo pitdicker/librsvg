@@ -170,7 +170,7 @@ rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
     rsvg_state_init (&state);
     rsvg_state_reconstruct (&state, self);
     if (is_current_color)
-        state.stop_color = state.current_color;
+        state.stop_color = state.color;
     stop->rgba = (state.stop_color << 8) | state.stop_opacity;
     rsvg_state_finalize (&state);
 }

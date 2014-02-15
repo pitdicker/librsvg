@@ -42,10 +42,10 @@ G_BEGIN_DECLS
 typedef int TextDecoration;
 
 enum {
-    TEXT_NORMAL = 0x00,
-    TEXT_OVERLINE = 0x01,
-    TEXT_UNDERLINE = 0x02,
-    TEXT_STRIKE = 0x04
+    TEXT_DECORATION_NONE         = 0x00,
+    TEXT_DECORATION_UNDERLINE    = 0x01,
+    TEXT_DECORATION_OVERLINE     = 0x02,
+    TEXT_DECORATION_LINE_THROUGH = 0x04
 };
 
 typedef enum {
@@ -92,114 +92,105 @@ struct _RsvgVpathDash {
 /* end libart theft... */
 
 struct _RsvgState {
-    RsvgState *parent;
-    cairo_matrix_t affine;
-    cairo_matrix_t personal_affine;
+    RsvgState         *parent;
+    cairo_matrix_t     affine;
+    cairo_matrix_t     personal_affine;
 
-    RsvgFilter *filter;
-    void *mask;
-    void *clip_path_ref;
-    guint8 opacity;             /* 0..255 */
+    /* presentation attributes */
+    void              *clip_path;
+    cairo_fill_rule_t  clip_rule;
+    guint32            color;
+    PangoDirection     direction;
+    RsvgEnableBackgroundType enable_background;
+    RsvgPaintServer   *fill;
+    guint8             fill_opacity;        /* 0..255 */
+    cairo_fill_rule_t  fill_rule;
+    RsvgFilter        *filter;
+    guint32            flood_color;
+    guint8             flood_opacity;
+    char              *font_family;
+    RsvgLength         font_size;
+    PangoStretch       font_stretch;
+    PangoStyle         font_style;
+    PangoVariant       font_variant;
+    PangoWeight        font_weight;
+    RsvgLength         letter_spacing;
+    RsvgNode          *marker_start;
+    RsvgNode          *marker_mid;
+    RsvgNode          *marker_end;
+    void              *mask;
+    guint8             opacity;             /* 0..255 */
+    gboolean           overflow;
+    cairo_antialias_t  shape_rendering;
+    guint32            stop_color;          /* rgb */
+    guint8             stop_opacity;        /* 0..255 */
+    RsvgPaintServer   *stroke;
+    cairo_line_cap_t   stroke_linecap;
+    cairo_line_join_t  stroke_linejoin;
+    double             stroke_miterlimit;
+    guint8             stroke_opacity;      /* 0..255 */
+    RsvgLength         stroke_width;
+    TextAnchor         text_anchor;
+    TextDecoration     text_decoration;
+    cairo_antialias_t  text_rendering;
+    UnicodeBidi        unicode_bidi;
 
-    RsvgPaintServer *fill;
+    /* TODO */
+    PangoGravity       text_gravity;
+    gboolean           visible;
+    RsvgVpathDash      dash;
+
+    /* core xml attributes */
+    char              *lang;
+    gboolean           space_preserve;
+
+    /* svg 1.2 attribute */
+    cairo_operator_t   comp_op;
+
+    /* ??? */
+    gboolean           cond_true;
+
+    GHashTable *styles;
+
     gboolean has_fill_server;
-    guint8 fill_opacity;        /* 0..255 */
     gboolean has_fill_opacity;
-    cairo_fill_rule_t fill_rule;
     gboolean has_fill_rule;
-    cairo_fill_rule_t clip_rule;
     gboolean has_clip_rule;
-
-    gboolean overflow;
     gboolean has_overflow;
-
-    RsvgPaintServer *stroke;
     gboolean has_stroke_server;
-    guint8 stroke_opacity;      /* 0..255 */
     gboolean has_stroke_opacity;
-    RsvgLength stroke_width;
     gboolean has_stroke_width;
-    double miter_limit;
     gboolean has_miter_limit;
-
-    cairo_line_cap_t cap;
     gboolean has_cap;
-    cairo_line_join_t join;
     gboolean has_join;
-
-    RsvgLength font_size;
     gboolean has_font_size;
-    char *font_family;
     gboolean has_font_family;
-    char *lang;
     gboolean has_lang;
-    PangoStyle font_style;
     gboolean has_font_style;
-    PangoVariant font_variant;
     gboolean has_font_variant;
-    PangoWeight font_weight;
     gboolean has_font_weight;
-    PangoStretch font_stretch;
     gboolean has_font_stretch;
-    TextDecoration font_decor;
     gboolean has_font_decor;
-    PangoDirection text_dir;
     gboolean has_text_dir;
-    PangoGravity text_gravity;
     gboolean has_text_gravity;
-    UnicodeBidi unicode_bidi;
     gboolean has_unicode_bidi;
-    TextAnchor text_anchor;
     gboolean has_text_anchor;
-    RsvgLength letter_spacing;
     gboolean has_letter_spacing;
-
-    guint text_offset;
-
-    guint32 stop_color;         /* rgb */
     gboolean has_stop_color;
-    guint8 stop_opacity;        /* 0..255 */
     gboolean has_stop_opacity;
-
-    gboolean visible;
     gboolean has_visible;
-
-    gboolean space_preserve;
     gboolean has_space_preserve;
-
     gboolean has_cond;
-    gboolean cond_true;
-
-    RsvgVpathDash dash;
     gboolean has_dash;
     gboolean has_dashoffset;
-
-    guint32 current_color;
     gboolean has_current_color;
-
-    guint32 flood_color;
     gboolean has_flood_color;
-
-    guint8 flood_opacity;
     gboolean has_flood_opacity;
-
-    RsvgNode *startMarker;
-    RsvgNode *middleMarker;
-    RsvgNode *endMarker;
     gboolean has_startMarker;
     gboolean has_middleMarker;
     gboolean has_endMarker;
-
-    cairo_operator_t comp_op;
-    RsvgEnableBackgroundType enable_background;
-
-    cairo_antialias_t shape_rendering_type;
     gboolean has_shape_rendering_type;
-
-    cairo_antialias_t text_rendering_type;
     gboolean has_text_rendering_type;
-
-    GHashTable *styles;
 };
 
 typedef struct _StyleValueData {

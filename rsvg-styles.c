@@ -87,9 +87,9 @@ rsvg_state_init (RsvgState * state)
     state->fill_opacity = 0xff;
     state->stroke_opacity = 0xff;
     state->stroke_width = (RsvgLength) {1.0, RSVG_UNIT_NUMBER};
-    state->miter_limit = 4;
-    state->cap = CAIRO_LINE_CAP_BUTT;
-    state->join = CAIRO_LINE_JOIN_MITER;
+    state->stroke_miterlimit = 4;
+    state->stroke_linecap = CAIRO_LINE_CAP_BUTT;
+    state->stroke_linejoin = CAIRO_LINE_JOIN_MITER;
     state->stop_opacity = 0xff;
     state->fill_rule = CAIRO_FILL_RULE_WINDING;
     state->clip_rule = CAIRO_FILL_RULE_WINDING;
@@ -105,7 +105,7 @@ rsvg_state_init (RsvgState * state)
     state->font_variant = PANGO_VARIANT_NORMAL;
     state->font_weight = PANGO_WEIGHT_NORMAL;
     state->font_stretch = PANGO_STRETCH_NORMAL;
-    state->text_dir = PANGO_DIRECTION_LTR;
+    state->direction = PANGO_DIRECTION_LTR;
     state->text_gravity = PANGO_GRAVITY_SOUTH;
     state->unicode_bidi = UNICODE_BIDI_NORMAL;
     state->text_anchor = TEXT_ANCHOR_START;
@@ -113,10 +113,10 @@ rsvg_state_init (RsvgState * state)
     state->visible = TRUE;
     state->cond_true = TRUE;
     state->filter = NULL;
-    state->clip_path_ref = NULL;
-    state->startMarker = NULL;
-    state->middleMarker = NULL;
-    state->endMarker = NULL;
+    state->clip_path = NULL;
+    state->marker_start = NULL;
+    state->marker_mid = NULL;
+    state->marker_end = NULL;
 
     state->has_current_color = FALSE;
     state->has_flood_color = FALSE;
@@ -155,9 +155,9 @@ rsvg_state_init (RsvgState * state)
     state->has_endMarker = FALSE;
     state->has_overflow = FALSE;
 
-    state->shape_rendering_type = SHAPE_RENDERING_AUTO;
+    state->shape_rendering = SHAPE_RENDERING_AUTO;
     state->has_shape_rendering_type = FALSE;
-    state->text_rendering_type = TEXT_RENDERING_AUTO;
+    state->text_rendering = TEXT_RENDERING_AUTO;
     state->has_text_rendering_type = FALSE;
 
     state->styles = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -213,7 +213,7 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
     gint i;
 
     if (function (dst->has_current_color, src->has_current_color))
-        dst->current_color = src->current_color;
+        dst->color = src->color;
     if (function (dst->has_flood_color, src->has_flood_color))
         dst->flood_color = src->flood_color;
     if (function (dst->has_flood_opacity, src->has_flood_opacity))
@@ -243,11 +243,11 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
     if (function (dst->has_stroke_width, src->has_stroke_width))
         dst->stroke_width = src->stroke_width;
     if (function (dst->has_miter_limit, src->has_miter_limit))
-        dst->miter_limit = src->miter_limit;
+        dst->stroke_miterlimit = src->stroke_miterlimit;
     if (function (dst->has_cap, src->has_cap))
-        dst->cap = src->cap;
+        dst->stroke_linecap = src->stroke_linecap;
     if (function (dst->has_join, src->has_join))
-        dst->join = src->join;
+        dst->stroke_linejoin = src->stroke_linejoin;
     if (function (dst->has_stop_color, src->has_stop_color))
         dst->stop_color = src->stop_color;
     if (function (dst->has_stop_opacity, src->has_stop_opacity))
@@ -265,9 +265,9 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
     if (function (dst->has_font_stretch, src->has_font_stretch))
         dst->font_stretch = src->font_stretch;
     if (function (dst->has_font_decor, src->has_font_decor))
-        dst->font_decor = src->font_decor;
+        dst->text_decoration = src->text_decoration;
     if (function (dst->has_text_dir, src->has_text_dir))
-        dst->text_dir = src->text_dir;
+        dst->direction = src->direction;
     if (function (dst->has_text_gravity, src->has_text_gravity))
         dst->text_gravity = src->text_gravity;
     if (function (dst->has_unicode_bidi, src->has_unicode_bidi))
@@ -277,15 +277,15 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
     if (function (dst->has_letter_spacing, src->has_letter_spacing))
         dst->letter_spacing = src->letter_spacing;
     if (function (dst->has_startMarker, src->has_startMarker))
-        dst->startMarker = src->startMarker;
+        dst->marker_start = src->marker_start;
     if (function (dst->has_middleMarker, src->has_middleMarker))
-        dst->middleMarker = src->middleMarker;
+        dst->marker_mid = src->marker_mid;
     if (function (dst->has_endMarker, src->has_endMarker))
-        dst->endMarker = src->endMarker;
+        dst->marker_end = src->marker_end;
     if (function (dst->has_shape_rendering_type, src->has_shape_rendering_type))
-        dst->shape_rendering_type = src->shape_rendering_type;
+        dst->shape_rendering = src->shape_rendering;
     if (function (dst->has_text_rendering_type, src->has_text_rendering_type))
-        dst->text_rendering_type = src->text_rendering_type;
+        dst->text_rendering = src->text_rendering;
 
     if (function (dst->has_font_family, src->has_font_family)) {
         g_free (dst->font_family);      /* font_family is always set to something */
@@ -319,7 +319,7 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
     }
 
     if (inherituninheritables) {
-        dst->clip_path_ref = src->clip_path_ref;
+        dst->clip_path = src->clip_path;
         dst->mask = src->mask;
         dst->enable_background = src->enable_background;
         dst->opacity = src->opacity;
@@ -466,8 +466,8 @@ rsvg_parse_presentation_attr (RsvgHandle * ctx, RsvgState * state, RsvgPropertyB
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-dasharray", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-dashoffset", atts);
-    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-linecap", atts);
-    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-linejoin", atts);
+    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke_linecap", atts);
+    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke_linejoin", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-miterlimit", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-opacity", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-width", atts);

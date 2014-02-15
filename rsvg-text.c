@@ -488,7 +488,7 @@ rsvg_text_create_layout (RsvgDrawingCtx * ctx,
         pango_context_set_language (context, pango_language_from_string (state->lang));
 
     if (state->unicode_bidi == UNICODE_BIDI_OVERRIDE || state->unicode_bidi == UNICODE_BIDI_EMBED)
-        pango_context_set_base_dir (context, state->text_dir);
+        pango_context_set_base_dir (context, state->direction);
 
     if (PANGO_GRAVITY_IS_VERTICAL (state->text_gravity))
         pango_context_set_base_gravity (context, state->text_gravity);
@@ -518,18 +518,18 @@ rsvg_text_create_layout (RsvgDrawingCtx * ctx,
     pango_attr_list_insert (attr_list, attribute); 
 
     if (state->has_font_decor && text) {
-        if (state->font_decor & TEXT_UNDERLINE) {
+        if (state->text_decoration & TEXT_DECORATION_UNDERLINE) {
             attribute = pango_attr_underline_new (PANGO_UNDERLINE_SINGLE);
             attribute->start_index = 0;
             attribute->end_index = -1;
             pango_attr_list_insert (attr_list, attribute);
         }
-	if (state->font_decor & TEXT_STRIKE) {
+        if (state->text_decoration & TEXT_DECORATION_LINE_THROUGH) {
             attribute = pango_attr_strikethrough_new (TRUE);
             attribute->start_index = 0;
             attribute->end_index = -1;
             pango_attr_list_insert (attr_list, attribute);
-	}
+        }
     }
 
     pango_layout_set_attributes (layout, attr_list);
@@ -540,7 +540,7 @@ rsvg_text_create_layout (RsvgDrawingCtx * ctx,
     else
         pango_layout_set_text (layout, NULL, 0);
 
-    pango_layout_set_alignment (layout, (state->text_dir == PANGO_DIRECTION_LTR) ?
+    pango_layout_set_alignment (layout, (state->direction == PANGO_DIRECTION_LTR) ?
                                 PANGO_ALIGN_LEFT : PANGO_ALIGN_RIGHT);
 
     return layout;

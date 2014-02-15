@@ -166,7 +166,7 @@ rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
     double sinf, cosf, th, t;
     guint n, n_segs;
 
-    cairo_line_cap_t cap = state->cap;
+    cairo_line_cap_t stroke_linecap = state->stroke_linecap;
     cairo_matrix_t affine;
     double min_prec_x;
     gboolean zero_length_subpath;
@@ -189,7 +189,7 @@ rsvg_cairo_build_path (const RSVGPathSegm *path, const RsvgState *state)
         y = path[i].y;
 
         /* handle zero-length subpaths */
-        if (cap == CAIRO_LINE_CAP_SQUARE) {
+        if (stroke_linecap == CAIRO_LINE_CAP_SQUARE) {
             if (path[i].type == PATHSEG_MOVETO_ABS ||
                 path[i].type == PATHSEG_MOVETO_REL) {
                 /* just finished a subpath */
