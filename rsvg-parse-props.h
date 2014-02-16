@@ -50,9 +50,15 @@ G_GNUC_INTERNAL
 RsvgLength _rsvg_parse_length (const char *str,
                                const char **end,
                                const RsvgPropSrc prop_src);
+G_GNUC_INTERNAL
+gboolean _rsvg_skip_comma_wsp (const char *str,
+                               const char **end);
 
 /* functions for parsing properties that can only contain a basic data type */
-gboolean _rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc prop_src);
+G_GNUC_INTERNAL
+gboolean _rsvg_parse_prop_length (const char *str, RsvgLength     *result, const RsvgPropSrc prop_src);
+G_GNUC_INTERNAL
+gboolean _rsvg_parse_length_list (const char *str, RsvgLengthList *result, const RsvgPropSrc prop_src);
 
 /* TODO: this one should not be nessesary in a header */
 G_GNUC_INTERNAL

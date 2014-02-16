@@ -112,6 +112,8 @@ rsvg_state_init (RsvgState * state)
     state->stop_color        = 0x000000; /* black */
     state->stop_opacity      = 0xff;
     state->stroke            = NULL;
+    state->stroke_dasharray  = (RsvgLengthList) {0, NULL};
+    state->stroke_dashoffset = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     state->stroke_linecap    = CAIRO_LINE_CAP_BUTT;
     state->stroke_linejoin   = CAIRO_LINE_JOIN_MITER;
     state->stroke_miterlimit = 4.0;
@@ -125,10 +127,6 @@ rsvg_state_init (RsvgState * state)
     /* TODO */
     state->text_gravity      = PANGO_GRAVITY_SOUTH;
     state->visible           = TRUE;
-    state->dash              = (struct _RsvgVpathDash) {
-                               .offset = (RsvgLength) {1.0, RSVG_UNIT_NUMBER},
-                               .n_dash = 0,
-                               .dash = NULL};
 
     /* core xml attributes */
     state->lang              = NULL;
@@ -158,7 +156,7 @@ typedef int (*InheritanceFunction) (int dst, int src);
 void
 rsvg_state_clone (RsvgState * dst, const RsvgState * src)
 {
-    gint i;
+    guint i;
     RsvgState *parent = dst->parent;
 
     rsvg_state_finalize (dst);
@@ -172,10 +170,10 @@ rsvg_state_clone (RsvgState * dst, const RsvgState * src)
 
     dst->styles = g_hash_table_ref (src->styles);
 
-    if (src->dash.n_dash > 0) {
-        dst->dash.dash = g_new (gdouble, src->dash.n_dash);
-        for (i = 0; i < src->dash.n_dash; i++)
-            dst->dash.dash[i] = src->dash.dash[i];
+    if (src->stroke_dasharray.items != NULL) {
+        dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.number_of_items);
+        for (i = 0; i < src->stroke_dasharray.number_of_items; i++)
+            dst->stroke_dasharray.items[i] = src->stroke_dasharray.items[i];
     }
 }
 
@@ -190,7 +188,7 @@ static void
 rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
                         const InheritanceFunction function, const gboolean inherituninheritables)
 {
-    gint i;
+    guint i;
 
     if (function (dst->has_current_color, src->has_current_color))
         dst->color = src->color;
@@ -284,18 +282,18 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
         dst->lang = g_strdup (src->lang);
     }
 
-    if (src->dash.n_dash > 0 && (function (dst->has_dash, src->has_dash))) {
-        if (dst->has_dash)
-            g_free (dst->dash.dash);
+    if ((function (dst->has_dash, src->has_dash))) {
+        if (dst->stroke_dasharray.items != NULL)
+            g_free (dst->stroke_dasharray.items);
 
-        dst->dash.dash = g_new (gdouble, src->dash.n_dash);
-        dst->dash.n_dash = src->dash.n_dash;
-        for (i = 0; i < src->dash.n_dash; i++)
-            dst->dash.dash[i] = src->dash.dash[i];
+        dst->stroke_dasharray.number_of_items = src->stroke_dasharray.number_of_items;
+        dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.number_of_items);
+        for (i = 0; i < src->stroke_dasharray.number_of_items; i++)
+            dst->stroke_dasharray.items[i] = src->stroke_dasharray.items[i];
     }
 
     if (function (dst->has_dashoffset, src->has_dashoffset)) {
-        dst->dash.offset = src->dash.offset;
+        dst->stroke_dashoffset = src->stroke_dashoffset;
     }
 
     if (inherituninheritables) {
@@ -392,8 +390,8 @@ rsvg_state_finalize (RsvgState * state)
     rsvg_paint_server_unref (state->fill);
     rsvg_paint_server_unref (state->stroke);
 
-    if (state->dash.n_dash != 0)
-        g_free (state->dash.dash);
+    if (state->stroke_dasharray.items != NULL)
+        g_free (state->stroke_dasharray.items);
 
     if (state->styles) {
         g_hash_table_unref (state->styles);

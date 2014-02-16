@@ -79,17 +79,12 @@ enum {
     TEXT_RENDERING_GEOMETRIC_PRECISION = CAIRO_ANTIALIAS_DEFAULT
 };
 
-/* enums and data structures are ABI compatible with libart */
-
-typedef struct _RsvgVpathDash RsvgVpathDash;
-
-struct _RsvgVpathDash {
-    RsvgLength offset;
-    int n_dash;
-    double *dash;
+enum {
+    RSVG_PROP_INITIAL        = 0x00,
+    RSVG_PROP_EXPLICITLY_SET = 0x01,
+    RSVG_PROP_INHERIT        = 0x02,
+    RSVG_PROP_ERROR          = 0x04
 };
-
-/* end libart theft... */
 
 struct _RsvgState {
     RsvgState         *parent;
@@ -125,6 +120,8 @@ struct _RsvgState {
     guint32            stop_color;          /* rgb */
     guint8             stop_opacity;        /* 0..255 */
     RsvgPaintServer   *stroke;
+    RsvgLengthList     stroke_dasharray;
+    RsvgLength         stroke_dashoffset;
     cairo_line_cap_t   stroke_linecap;
     cairo_line_join_t  stroke_linejoin;
     double             stroke_miterlimit;
@@ -138,7 +135,6 @@ struct _RsvgState {
     /* TODO */
     PangoGravity       text_gravity;
     gboolean           visible;
-    RsvgVpathDash      dash;
 
     /* core xml attributes */
     char              *lang;

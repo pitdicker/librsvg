@@ -32,6 +32,17 @@
 #include "rsvg-css.h"
 #include "rsvg-paint-server.h"
 
+/**
+ * rsvg_keyword_cmp:
+ * Compare 2 strings, returns TRUE if equal.
+ * If the last argument is 'CSS_VALUE', the comparison is case-insensitive.
+ */
+static gboolean
+rsvg_keyword_cmp (const char *s1, const char *s2, const RsvgPropSrc prop_src)
+{
+    return (((prop_src == CSS_VALUE)? g_ascii_strcasecmp : strcmp) (s1, s2) == 0);
+}
+
 static int
 rsvg_cmp_keyword (const void *str, const void *b)
 {
@@ -119,40 +130,74 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
 {
     RsvgLength out;
 
-    struct length_units {
-        const char *keyword;
-        RsvgLengthUnit value;
-    };
-    const struct length_units units[] = {
-        {"%",  RSVG_UNIT_PERCENTAGE},
-        {"cm", RSVG_UNIT_CM},
-        {"em", RSVG_UNIT_EMS},
-        {"ex", RSVG_UNIT_EXS},
-        {"in", RSVG_UNIT_IN},
-        {"mm", RSVG_UNIT_MM},
-        {"pc", RSVG_UNIT_PC},
-        {"pt", RSVG_UNIT_PT},
-        {"px", RSVG_UNIT_PX}
-    };
-    struct length_units *unit;
-
     g_assert (str != NULL);
 
     out.length = _rsvg_parse_number (str, end, prop_src);
     if (*end == str) /* invalid number */
         return (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN}; /* TODO: will this give problems? */
 
-    if ((unit = rsvg_match_keyword (*end, units, prop_src))) {
-        out.unit = unit->value;
-        if (out.unit == RSVG_UNIT_PERCENTAGE)
-            *end += 1;
-        else
-            *end += 2;
+    if (*end == '%') {
+        out.unit = RSVG_UNIT_PERCENTAGE;
+        *end += 1;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "em", 2) == 0)) {
+        out.unit = RSVG_UNIT_EMS;
+        *end += 2;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "ex", 2) == 0)) {
+        out.unit = RSVG_UNIT_EXS;
+        *end += 2;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "px", 2) == 0)) {
+        out.unit = RSVG_UNIT_PX;
+        *end += 2;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "in", 2) == 0)) {
+        out.unit = RSVG_UNIT_IN;
+        *end += 2;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "cm", 2) == 0)) {
+        out.unit = RSVG_UNIT_CM;
+        *end += 2;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "mm", 2) == 0)) {
+        out.unit = RSVG_UNIT_MM;
+        *end += 2;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "pt", 2) == 0)) {
+        out.unit = RSVG_UNIT_PT;
+        *end += 2;
+    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "pc", 2) == 0)) {
+        out.unit = RSVG_UNIT_PC;
+        *end += 2;
     } else {
         out.unit = RSVG_UNIT_NUMBER;
     }
 
     return out;
+}
+
+/**
+ * _rsvg_skip_comma_wsp:
+ * *end is set to the first character that follows the comma-whitespace
+ * Returns TRUE is a comma is found (which implies something has to follow)
+ */
+gboolean
+_rsvg_skip_comma_wsp (const char *str, const char **end)
+{
+    g_assert (str != NULL);
+
+    /* skip whitespace */
+    while (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n')
+        str++;
+
+    if (*str == ',') {
+        /* skip optional comma */
+        str++;
+
+        /* skip whitespace */
+        while (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n')
+            str++;
+
+        *end = str;
+        return TRUE;
+    } else {
+        *end = str;
+        return FALSE;
+    }
 }
 
 static char *
@@ -191,6 +236,61 @@ _rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc 
     *result = length;
     return TRUE;
 }
+
+gboolean
+_rsvg_parse_length_list (const char *str, RsvgLengthList *result, const RsvgPropSrc prop_src)
+{
+    RsvgLengthList list;
+    const char *tmp;
+    guint i;
+
+    g_assert (str != NULL);
+
+    if (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n' || *str == ',' || *str == '\0') {
+        /* str starts with comma-wsp */
+        return FALSE;
+    }
+
+    /* count number of items */
+    list.number_of_items = 0;
+    tmp = str;
+    while (*tmp != '\0') {
+        while (*tmp != ' ' && *tmp != '\t' && *tmp != '\r' && *tmp != '\n' && *tmp != ',' && *tmp != '\0')
+            tmp++;
+
+        list.number_of_items++;
+        _rsvg_skip_comma_wsp (tmp, &tmp);
+    }
+
+    list.items = g_new (RsvgLength, list.number_of_items);
+
+    /* parse the lengths */
+    for (i = 0; i < list.number_of_items; i++) {
+        list.items[i] = _rsvg_parse_length (str, &tmp, prop_src);
+        if (str == tmp)
+            goto invalid_list;
+        str = tmp;
+
+        /* if this is not the last item skip comma-whitespace */
+        if (i + 1 != list.number_of_items) {
+            _rsvg_skip_comma_wsp (str, &tmp);
+            if (str == tmp)
+                goto invalid_list;
+            str = tmp;
+        }
+    }
+
+    if (*str != '\0')
+        goto invalid_list;
+
+    *result = list;
+    return TRUE;
+
+invalid_list:
+    g_free (list.items);
+    return FALSE;
+}
+
 
 static gboolean
 _rsvg_parse_opacity (const char *str, guint8 *result, const RsvgPropSrc prop_src)
@@ -587,6 +687,44 @@ rsvg_parse_shape_rendering (const char *str, cairo_antialias_t *result, const Rs
 }
 
 static gboolean
+rsvg_parse_stroke_dasharray (const char *str, RsvgLengthList *result, const RsvgPropSrc prop_src)
+{
+    RsvgLengthList list;
+    guint i;
+    gboolean nonzero_length = FALSE;
+
+    if (rsvg_keyword_cmp (str, "none", prop_src)) {
+        result->number_of_items = 0;
+        result->items = NULL;
+        return TRUE;
+    }
+
+    if (_rsvg_parse_length_list (str, &list, prop_src) == FALSE)
+        return FALSE;
+
+    /* make sure there are no values with a negative value and the sum of
+       values is not zero */
+    for (i = 0; i < list.number_of_items; i++) {
+        if (list.items[i].length > 0.0) {
+            nonzero_length = TRUE;
+        } else if (list.items[i].length < 0.0) {
+            g_free (list.items);
+            return FALSE;
+        }
+    }
+    if (nonzero_length == FALSE) {
+        /* handle as if a value of none were specified */
+        list.number_of_items = 0;
+        list.items = NULL;
+    }
+
+    if (result->items != NULL)
+        g_free (result->items);
+    *result = list;
+    return TRUE;
+}
+
+static gboolean
 rsvg_parse_stroke_linecap (const char *str, cairo_line_cap_t *result, const RsvgPropSrc prop_src)
 {
     struct keywords {
@@ -959,63 +1097,11 @@ rsvg_parse_prop (RsvgHandle * ctx,
             rsvg_parse_paint_server (&state->has_stroke_server, ctx->priv->defs, value, 0);
         rsvg_paint_server_unref (stroke);
     } else if (g_str_equal (name, "stroke-dasharray")) {
-        /* TODO */
-        state->has_dash = TRUE;
-        if (g_str_equal (value, "none")) {
-            if (state->dash.n_dash != 0) {
-                /* free any cloned dash data */
-                g_free (state->dash.dash);
-                state->dash.n_dash = 0;
-            }
-        } else {
-            gchar **dashes = g_strsplit_set (value, ", ", -1);
-            if (NULL != dashes) {
-                gint n_dashes, i, j;
-                gboolean is_even = FALSE;
-                gdouble total = 0;
-
-                /* count the #dashes */
-                n_dashes = 0;
-                for (i = 0; dashes[i] != NULL; i++) {
-                    if (*dashes[i] != '\0')
-                        n_dashes++;
-                }
-
-                is_even = (n_dashes % 2 == 0);
-                state->dash.n_dash = (is_even ? n_dashes : n_dashes * 2);
-                state->dash.dash = g_new (double, state->dash.n_dash);
-
-                /* TODO: handle negative value == error case */
-
-                /* the even and base case */
-                i = j = 0;
-                while (dashes[i] != NULL) {
-                    if (*dashes[i] != '\0') {
-                        /* TODO: use _rsvg_parse_length */
-                        state->dash.dash[j] = g_ascii_strtod (dashes[i], NULL);
-                        total += state->dash.dash[j];
-                        j++;
-                    }
-                    i++;
-                }
-                /* if an odd number of dashes is found, it gets repeated */
-                if (!is_even)
-                    for (; j < state->dash.n_dash; j++)
-                        state->dash.dash[j] = state->dash.dash[j - n_dashes];
-
-                g_strfreev (dashes);
-                /* If the dashes add up to 0, then it should
-                   be ignored */
-                if (total == 0) {
-                    g_free (state->dash.dash);
-                    state->dash.n_dash = 0;
-                }
-            }
-        }
+        if (rsvg_parse_stroke_dasharray (value, &state->stroke_dasharray, prop_src))
+            state->has_dash = TRUE;
     } else if (g_str_equal (name, "stroke-dashoffset")) {
-        if (_rsvg_parse_prop_length (value, &state->dash.offset, prop_src))
+        if (_rsvg_parse_prop_length (value, &state->stroke_dashoffset, prop_src))
             state->has_dashoffset = TRUE;
-        /* TODO: does a negative value cause problems with cairo? */
     } else if (g_str_equal (name, "stroke-linecap")) {
        if (rsvg_parse_stroke_linecap (value, &state->stroke_linecap, prop_src))
             state->has_cap = TRUE;
