@@ -67,12 +67,6 @@ rsvg_viewport_percentage (gdouble width, gdouble height)
     return sqrt (width * height);
 }
 
-gdouble
-rsvg_dpi_percentage (RsvgHandle * ctx)
-{
-    return sqrt (ctx->priv->dpi_x * ctx->priv->dpi_y);
-}
-
 void
 rsvg_state_init (RsvgState * state)
 {
