@@ -67,11 +67,11 @@ RsvgPaintServer * rsvg_parse_paint_server (gboolean * inherit,
                                            const char *str,
                                            guint32 current_color);
 G_GNUC_INTERNAL
-void rsvg_parse_prop (RsvgHandle * ctx,
-                      RsvgState * state,
-                      const gchar * name,
-                      const gchar * value,
-                      gboolean important,
+void rsvg_parse_prop (const RsvgHandle *ctx,
+                      RsvgState *state,
+                      const gchar *name,
+                      const gchar *value,
+                      const gboolean important,
                       const RsvgPropSrc prop_src);
 
 G_END_DECLS

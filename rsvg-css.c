@@ -217,10 +217,8 @@ rsvg_normalize_stroke_dasharray (const RsvgLengthList src,
 
     result = g_new (double, n_dashes);
 
-    for (i = 0; i < src.number_of_items; i++) {
+    for (i = 0; i < src.number_of_items; i++)
         result[i] = _rsvg_css_normalize_length (&src.items[i], ctx, 'o');
-        printf ("dash %f\n", result[i]);
-    }
 
     /* an odd number of dashes gets repeated */
     if (!is_even) {
@@ -228,7 +226,6 @@ rsvg_normalize_stroke_dasharray (const RsvgLengthList src,
             result[i] = result[i - src.number_of_items];
     }
 
-    printf ("\n");
     *dst = result;
     return n_dashes;
 }

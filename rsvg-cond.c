@@ -168,7 +168,7 @@ rsvg_cond_parse_system_language (const char *value)
 /* returns TRUE if this element should be processed according to <switch> semantics
    http://www.w3.org/TR/SVG/struct.html#SwitchElement */
 gboolean
-rsvg_eval_switch_attributes (RsvgPropertyBag * atts, gboolean * p_has_cond)
+rsvg_eval_switch_attributes (const RsvgPropertyBag * atts, gboolean * p_has_cond)
 {
     gboolean permitted = TRUE;
     gboolean has_cond = FALSE;

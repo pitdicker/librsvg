@@ -136,7 +136,7 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
     if (*end == str) /* invalid number */
         return (RsvgLength) {0.0, RSVG_UNIT_UNKNOWN}; /* TODO: will this give problems? */
 
-    if (*end == '%') {
+    if (**end == '%') {
         out.unit = RSVG_UNIT_PERCENTAGE;
         *end += 1;
     } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "em", 2) == 0)) {
@@ -937,11 +937,11 @@ rsvg_parse_comp_op (const char *str, cairo_operator_t *result, const RsvgPropSrc
 
 /* Parse a CSS2 style argument, setting the SVG context attributes. */
 void
-rsvg_parse_prop (RsvgHandle * ctx,
-                 RsvgState * state,
-                 const gchar * name,
-                 const gchar * value,
-                 gboolean important,
+rsvg_parse_prop (const RsvgHandle *ctx,
+                 RsvgState *state,
+                 const gchar *name,
+                 const gchar *value,
+                 const gboolean important,
                  const RsvgPropSrc prop_src)
 {
     StyleValueData *data;

@@ -416,9 +416,9 @@ RsvgPropertyBag     *rsvg_property_bag_dup       (RsvgPropertyBag * bag);
 G_GNUC_INTERNAL
 void                 rsvg_property_bag_free      (RsvgPropertyBag * bag);
 G_GNUC_INTERNAL
-const char          *rsvg_property_bag_lookup    (RsvgPropertyBag * bag, const char *key);
+const char          *rsvg_property_bag_lookup    (const RsvgPropertyBag * bag, const char *key);
 G_GNUC_INTERNAL
-guint                rsvg_property_bag_size      (RsvgPropertyBag * bag);
+guint                rsvg_property_bag_size      (const RsvgPropertyBag * bag);
 G_GNUC_INTERNAL
 void                 rsvg_property_bag_enumerate (RsvgPropertyBag * bag, RsvgPropertyBagEnumFunc func,
                                                   gpointer user_data);
@@ -428,7 +428,7 @@ GdkPixbuf *rsvg_pixbuf_from_data_with_size_data (const guchar * buff,
                                                  gpointer data,
                                                  const char *base_uri, GError ** error);
 G_GNUC_INTERNAL
-gboolean     rsvg_eval_switch_attributes        (RsvgPropertyBag * atts, gboolean * p_has_cond);
+gboolean     rsvg_eval_switch_attributes        (const RsvgPropertyBag * atts, gboolean * p_has_cond);
 G_GNUC_INTERNAL
 gchar       *rsvg_get_base_uri_from_filename    (const gchar * file_name);
 G_GNUC_INTERNAL

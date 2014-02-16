@@ -177,6 +177,7 @@ rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
         state.stop_color = state.color;
     stop->rgba = (state.stop_color << 8) | state.stop_opacity;
     rsvg_state_finalize (&state);
+    /* TODO: who frees state? */
 }
 
 RsvgNode *

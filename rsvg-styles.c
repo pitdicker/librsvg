@@ -41,7 +41,7 @@
 #include <libcroco/libcroco.h>
 
 StyleValueData *
-style_value_data_new (const gchar *value, gboolean important)
+style_value_data_new (const gchar *value, const gboolean important)
 {
     StyleValueData *ret;
 
@@ -68,7 +68,7 @@ rsvg_viewport_percentage (gdouble width, gdouble height)
 }
 
 void
-rsvg_state_init (RsvgState * state)
+rsvg_state_init (RsvgState *state)
 {
     /* TODO: remove memset */
     memset (state, 0, sizeof (RsvgState));
@@ -137,7 +137,7 @@ rsvg_state_init (RsvgState * state)
 }
 
 void
-rsvg_state_reinit (RsvgState * state)
+rsvg_state_reinit (RsvgState *state)
 {
     RsvgState *parent = state->parent;
     rsvg_state_finalize (state);
@@ -145,30 +145,35 @@ rsvg_state_reinit (RsvgState * state)
     state->parent = parent;
 }
 
-typedef int (*InheritanceFunction) (int dst, int src);
+typedef int (*InheritanceFunction) (const int dst, const int src);
 
 void
-rsvg_state_clone (RsvgState * dst, const RsvgState * src)
+rsvg_state_clone (RsvgState *dst, const RsvgState *src)
 {
     guint i;
     RsvgState *parent = dst->parent;
 
     rsvg_state_finalize (dst);
 
+    /* copy properties */
     *dst = *src;
+
+    /* keep old parent */
     dst->parent = parent;
+
+    /* duplicate pointers / increase refs */
     dst->font_family = g_strdup (src->font_family);
     dst->lang = g_strdup (src->lang);
     rsvg_paint_server_ref (dst->fill);
     rsvg_paint_server_ref (dst->stroke);
-
-    dst->styles = g_hash_table_ref (src->styles);
 
     if (src->stroke_dasharray.items != NULL) {
         dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.number_of_items);
         for (i = 0; i < src->stroke_dasharray.number_of_items; i++)
             dst->stroke_dasharray.items[i] = src->stroke_dasharray.items[i];
     }
+
+    dst->styles = g_hash_table_ref (src->styles);
 }
 
 /*
@@ -179,7 +184,7 @@ rsvg_state_clone (RsvgState * dst, const RsvgState * src)
 */
 
 static void
-rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
+rsvg_state_inherit_run (RsvgState *dst, const RsvgState *src,
                         const InheritanceFunction function, const gboolean inherituninheritables)
 {
     guint i;
@@ -307,7 +312,7 @@ rsvg_state_inherit_run (RsvgState * dst, const RsvgState * src,
 */
 
 static int
-reinheritfunction (int dst, int src)
+reinheritfunction (const int dst, const int src)
 {
     if (!dst)
         return 1;
@@ -315,7 +320,7 @@ reinheritfunction (int dst, int src)
 }
 
 void
-rsvg_state_reinherit (RsvgState * dst, const RsvgState * src)
+rsvg_state_reinherit (RsvgState *dst, const RsvgState *src)
 {
     rsvg_state_inherit_run (dst, src, reinheritfunction, 0);
 }
@@ -330,7 +335,7 @@ rsvg_state_reinherit (RsvgState * dst, const RsvgState * src)
 */
 
 static int
-dominatefunction (int dst, int src)
+dominatefunction (const int dst, const int src)
 {
     if (!dst || src)
         return 1;
@@ -338,7 +343,7 @@ dominatefunction (int dst, int src)
 }
 
 void
-rsvg_state_dominate (RsvgState * dst, const RsvgState * src)
+rsvg_state_dominate (RsvgState *dst, const RsvgState *src)
 {
     rsvg_state_inherit_run (dst, src, dominatefunction, 0);
 }
@@ -346,13 +351,13 @@ rsvg_state_dominate (RsvgState * dst, const RsvgState * src)
 /* copy everything inheritable from the src to the dst */
 
 static int
-clonefunction (int dst, int src)
+clonefunction (const int dst, const int src)
 {
     return 1;
 }
 
 void
-rsvg_state_override (RsvgState * dst, const RsvgState * src)
+rsvg_state_override (RsvgState *dst, const RsvgState *src)
 {
     rsvg_state_inherit_run (dst, src, clonefunction, 0);
 }
@@ -365,37 +370,31 @@ rsvg_state_override (RsvgState * dst, const RsvgState * src)
 */
 
 static int
-inheritfunction (int dst, int src)
+inheritfunction (const int dst, const int src)
 {
     return src;
 }
 
 void
-rsvg_state_inherit (RsvgState * dst, const RsvgState * src)
+rsvg_state_inherit (RsvgState *dst, const RsvgState *src)
 {
     rsvg_state_inherit_run (dst, src, inheritfunction, 1);
 }
 
 void
-rsvg_state_finalize (RsvgState * state)
+rsvg_state_finalize (const RsvgState *state)
 {
     g_free (state->font_family);
     g_free (state->lang);
     rsvg_paint_server_unref (state->fill);
     rsvg_paint_server_unref (state->stroke);
-
-    if (state->stroke_dasharray.items != NULL)
-        g_free (state->stroke_dasharray.items);
-
-    if (state->styles) {
-        g_hash_table_unref (state->styles);
-        state->styles = NULL;
-    }
+    g_free (state->stroke_dasharray.items);
+    g_hash_table_unref (state->styles);
 }
 
 static void
-rsvg_lookup_parse_presentation_attr (RsvgHandle * ctx, RsvgState * state,
-                              const char *key, RsvgPropertyBag * atts)
+rsvg_lookup_parse_presentation_attr (const RsvgHandle *ctx, RsvgState *state,
+                                     const char *key, const RsvgPropertyBag *atts)
 {
     const char *value;
 
@@ -405,7 +404,9 @@ rsvg_lookup_parse_presentation_attr (RsvgHandle * ctx, RsvgState * state,
 
 /* take a pair of the form (fill="#ff00ff") and parse it as a style */
 void
-rsvg_parse_presentation_attr (RsvgHandle * ctx, RsvgState * state, RsvgPropertyBag * atts)
+rsvg_parse_presentation_attr (const RsvgHandle * ctx,
+                              RsvgState * state,
+                              const RsvgPropertyBag * atts)
 {
     rsvg_lookup_parse_presentation_attr (ctx, state, "clip-path", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "clip-rule", atts);
@@ -498,7 +499,7 @@ parse_style_value (const gchar *string, gchar **value, gboolean *important)
    implementation will happen later.
 */
 void
-rsvg_parse_style (RsvgHandle * ctx, RsvgState * state, const char *str)
+rsvg_parse_style (const RsvgHandle *ctx, RsvgState *state, const char *str)
 {
     gchar **styles;
     guint i;
@@ -524,11 +525,11 @@ rsvg_parse_style (RsvgHandle * ctx, RsvgState * state, const char *str)
 }
 
 static void
-rsvg_css_define_style (RsvgHandle * ctx,
-                       const gchar * selector,
-                       const gchar * style_name,
-                       const gchar * style_value,
-                       gboolean important)
+rsvg_css_define_style (RsvgHandle *ctx,
+                       const gchar *selector,
+                       const gchar *style_name,
+                       const gchar *style_value,
+                       const gboolean important)
 {
     GHashTable *styles;
     gboolean need_insert = FALSE;
@@ -559,14 +560,14 @@ typedef struct _CSSUserData {
 } CSSUserData;
 
 static void
-css_user_data_init (CSSUserData * user_data, RsvgHandle * ctx)
+css_user_data_init (CSSUserData *user_data, RsvgHandle *ctx)
 {
     user_data->ctx = ctx;
     user_data->selector = NULL;
 }
 
 static void
-ccss_start_selector (CRDocHandler * a_handler, CRSelector * a_selector_list)
+ccss_start_selector (CRDocHandler *a_handler, CRSelector *a_selector_list)
 {
     CSSUserData *user_data;
 
@@ -578,7 +579,7 @@ ccss_start_selector (CRDocHandler * a_handler, CRSelector * a_selector_list)
 }
 
 static void
-ccss_end_selector (CRDocHandler * a_handler, CRSelector * a_selector_list)
+ccss_end_selector (CRDocHandler *a_handler, CRSelector *a_selector_list)
 {
     CSSUserData *user_data;
 
@@ -670,7 +671,7 @@ init_sac_handler (CRDocHandler * a_handler)
 }
 
 void
-rsvg_parse_cssbuffer (RsvgHandle * ctx, const char *buff, size_t buflen)
+rsvg_parse_cssbuffer (RsvgHandle *ctx, const char *buff, size_t buflen)
 {
     CRParser *parser = NULL;
     CRDocHandler *css_handler = NULL;
@@ -928,7 +929,7 @@ invalid_transform:
  * Parses the transform attribute in @str and applies it to @state.
  **/
 static void
-rsvg_parse_transform_attr (RsvgHandle * ctx, RsvgState * state, const char *str)
+rsvg_parse_transform_attr (RsvgState * state, const char *str)
 {
     cairo_matrix_t affine;
 
@@ -939,7 +940,7 @@ rsvg_parse_transform_attr (RsvgHandle * ctx, RsvgState * state, const char *str)
 }
 
 typedef struct _StylesData {
-    RsvgHandle *ctx;
+    const RsvgHandle *ctx;
     RsvgState *state;
 } StylesData;
 
@@ -951,7 +952,7 @@ rsvg_apply_css_props (const gchar *key, StyleValueData *value, gpointer user_dat
 }
 
 static gboolean
-rsvg_lookup_apply_css_style (RsvgHandle * ctx, const char *target, RsvgState * state)
+rsvg_lookup_apply_css_style (const RsvgHandle * ctx, const char *target, RsvgState * state)
 {
     GHashTable *styles;
 
@@ -980,9 +981,9 @@ rsvg_lookup_apply_css_style (RsvgHandle * ctx, const char *target, RsvgState * s
  * stack.
  **/
 void
-rsvg_set_presentation_props (RsvgHandle * ctx,
-                             RsvgState * state,
-                             const char *tag, const char *klazz, const char *id, RsvgPropertyBag * atts)
+rsvg_set_presentation_props (const RsvgHandle *ctx, RsvgState *state,
+                             const char *tag, const char *klazz, const char *id,
+                             const RsvgPropertyBag *atts)
 {
     int i = 0, j = 0;
     char *target = NULL;
@@ -1072,24 +1073,24 @@ rsvg_set_presentation_props (RsvgHandle * ctx,
         if ((value = rsvg_property_bag_lookup (atts, "style")) != NULL)
             rsvg_parse_style (ctx, state, value);
         if ((value = rsvg_property_bag_lookup (atts, "transform")) != NULL)
-            rsvg_parse_transform_attr (ctx, state, value);
+            rsvg_parse_transform_attr (state, value);
     }
 }
 
 RsvgState *
-rsvg_current_state (RsvgDrawingCtx * ctx)
+rsvg_current_state (const RsvgDrawingCtx *ctx)
 {
     return ctx->state;
 }
 
 RsvgState *
-rsvg_state_parent (RsvgState * state)
+rsvg_state_parent (const RsvgState *state)
 {
     return state->parent;
 }
 
 void
-rsvg_state_free_all (RsvgState * state)
+rsvg_state_free_all (RsvgState *state)
 {
     while (state) {
         RsvgState *parent = state->parent;
@@ -1157,15 +1158,15 @@ rsvg_property_bag_free (RsvgPropertyBag * bag)
 }
 
 const char *
-rsvg_property_bag_lookup (RsvgPropertyBag * bag, const char *key)
+rsvg_property_bag_lookup (const RsvgPropertyBag *bag, const char *key)
 {
-    return (const char *) g_hash_table_lookup (bag, (gconstpointer) key);
+    return (const char *) g_hash_table_lookup ((RsvgPropertyBag *) bag, (gconstpointer) key);
 }
 
 guint
-rsvg_property_bag_size (RsvgPropertyBag * bag)
+rsvg_property_bag_size (const RsvgPropertyBag * bag)
 {
-    return g_hash_table_size (bag);
+    return g_hash_table_size ((RsvgPropertyBag *) bag);
 }
 
 void
@@ -1218,7 +1219,7 @@ rsvg_state_pop (RsvgDrawingCtx * ctx)
 */
 
 void
-rsvg_state_reinherit_top (RsvgDrawingCtx * ctx, RsvgState * state, int dominate)
+rsvg_state_reinherit_top (const RsvgDrawingCtx * ctx, RsvgState * state, const int dominate)
 {
     RsvgState *current;
 
@@ -1226,7 +1227,7 @@ rsvg_state_reinherit_top (RsvgDrawingCtx * ctx, RsvgState * state, int dominate)
         return;
 
     current = rsvg_current_state (ctx);
-    /*This is a special domination mode for patterns, the transform
+    /* This is a special domination mode for patterns, the transform
        is simply left as is, wheras the style is totally overridden */
     if (dominate == 2) {
         rsvg_state_override (current, state);
