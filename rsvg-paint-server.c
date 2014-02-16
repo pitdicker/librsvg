@@ -136,9 +136,8 @@ rsvg_paint_server_unref (RsvgPaintServer * ps)
 static void
 rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
-    double offset = 0;
     gboolean is_current_color = FALSE;
-    const char *value;
+    const char *value, *end;
     RsvgGradientStop *stop;
     RsvgState state;
 
@@ -147,15 +146,20 @@ rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "offset"))) {
             /* either a number [0,1] or a percentage */
-            RsvgLength length;
-            _rsvg_parse_prop_length (value, &length, SVG_ATTRIBUTE);
-            offset = _rsvg_css_hand_normalize_length (&length, rsvg_dpi_percentage (ctx), 1., 0.);
-
-            if (offset < 0.)
-                offset = 0.;
-            else if (offset > 1.)
-                offset = 1.;
-            stop->offset = offset;
+            stop->offset = _rsvg_parse_number (value, &end, SVG_ATTRIBUTE);
+            if (value == end) {
+                /* invalid number */
+                stop->offset = 0.0; /* TODO: handle error */
+            }
+            if (*end == '%') {
+                stop->offset *= 0.01;
+                end++;
+            }
+            if (*end != '\0') {
+                /* the number or percentage should not be followed by anything */
+                stop->offset = 0.0; /* TODO: handle error */
+            }
+            stop->offset = CLAMP (stop->offset, 0., 1.);
         }
         if ((value = rsvg_property_bag_lookup (atts, "style")))
             rsvg_parse_style (ctx, self->state, value);
