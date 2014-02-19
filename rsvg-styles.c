@@ -61,12 +61,6 @@ style_value_data_free (StyleValueData *value)
     g_free (value);
 }
 
-gdouble
-rsvg_viewport_percentage (gdouble width, gdouble height)
-{
-    return sqrt (width * height);
-}
-
 void
 rsvg_state_init (RsvgState *state)
 {
@@ -1253,4 +1247,118 @@ rsvg_state_reconstruct (RsvgState * state, RsvgNode * current)
         return;
     rsvg_state_reconstruct (state, current->parent);
     rsvg_state_inherit (state, current->state);
+}
+
+/* ========================================================================== */
+
+double
+rsvg_normalize_length (const RsvgLength in, const RsvgDrawingCtx *ctx,
+                       const RsvgLengthDir dir)
+{
+    double dpi;
+    /* TODO: having a different x and y dpi at this point is fundamentally flawed */
+    switch (dir) {
+    case HORIZONTAL:
+        dpi = ctx->dpi_x;
+        break;
+    case VERTICAL:
+        dpi = ctx->dpi_y;
+        break;
+    case NO_DIR:
+        dpi = sqrt (ctx->dpi_x * ctx->dpi_y);
+    }
+
+    switch (in.unit) {
+    case RSVG_UNIT_NUMBER:
+        return in.length;
+    case RSVG_UNIT_PERCENTAGE:
+        switch (dir) {
+        case HORIZONTAL:
+            return in.length * 0.01 * ctx->vb.rect.width;
+        case VERTICAL:
+            return in.length * 0.01 * ctx->vb.rect.height;
+        case NO_DIR:
+            return in.length * 0.01 * sqrt ((ctx->vb.rect.width * ctx->vb.rect.width +
+                                              ctx->vb.rect.height * ctx->vb.rect.height) / 2.0);
+        }
+    case RSVG_UNIT_EMS:
+        return in.length * rsvg_normalize_font_size (rsvg_current_state (ctx), ctx);
+    case RSVG_UNIT_EXS:
+        /* TODO: should use real x-height of font */
+        return in.length * rsvg_normalize_font_size (rsvg_current_state (ctx), ctx) * 0.5;
+    case RSVG_UNIT_PX:
+        return in.length;
+    case RSVG_UNIT_CM:
+        return in.length / 2.54 * dpi;
+    case RSVG_UNIT_MM:
+        return in.length / 25.4 * dpi;
+    case RSVG_UNIT_IN:
+        return in.length * dpi;
+    case RSVG_UNIT_PT:
+        return in.length / 72.0 * dpi;
+    case RSVG_UNIT_PC:
+        return in.length / 6.0 * dpi;
+    case RSVG_UNIT_UNKNOWN:
+    default:
+        g_assert_not_reached();
+        return 0.0;
+    }
+}
+
+double
+rsvg_normalize_font_size (const RsvgState *state, const RsvgDrawingCtx *ctx)
+{
+    RsvgState *parent;
+    double parent_font_size;
+    double font_size = state->font_size.length;
+
+    switch (state->font_size.unit) {
+    case RSVG_UNIT_PERCENTAGE:
+        font_size *= 0.01;
+        break;
+    case RSVG_UNIT_EMS:
+        break;
+    case RSVG_UNIT_EXS:
+        /* TODO: should use real x-height of font */
+        font_size *= 0.5;
+        break;
+    default:
+        return rsvg_normalize_length (state->font_size, ctx, NO_DIR);
+    }
+
+    if ((parent = rsvg_state_parent (state)))
+        parent_font_size = rsvg_normalize_font_size (parent, ctx);
+    else
+        parent_font_size = RSVG_DEFAULT_FONT_SIZE;
+
+    return font_size * parent_font_size;
+}
+
+guint
+rsvg_normalize_stroke_dasharray (const RsvgLengthList src,
+                                 double **dst,
+                                 const RsvgDrawingCtx *ctx)
+{
+    double *result;
+    gboolean is_even = FALSE;
+    guint i, n_dashes;
+
+    g_assert (src.number_of_items != 0 && src.items != NULL);
+
+    is_even = (src.number_of_items % 2 == 0);
+    n_dashes = (is_even? 1 : 2) * src.number_of_items;
+
+    result = g_new (double, n_dashes);
+
+    for (i = 0; i < src.number_of_items; i++)
+        result[i] = rsvg_normalize_length (src.items[i], ctx, NO_DIR);
+
+    /* an odd number of dashes gets repeated */
+    if (!is_even) {
+        for (; i < n_dashes; i++)
+            result[i] = result[i - src.number_of_items];
+    }
+
+    *dst = result;
+    return n_dashes;
 }

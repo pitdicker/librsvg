@@ -1272,6 +1272,39 @@ rsvg_handle_get_desc (RsvgHandle * handle)
         return NULL;
 }
 
+static double
+rsvg_hand_normalize_length (const RsvgLength *in, const gdouble pixels_per_inch,
+                            const gdouble width_or_height)
+{
+    switch (in->unit) {
+    case RSVG_UNIT_NUMBER:
+        return in->length;
+    case RSVG_UNIT_PERCENTAGE:
+        return in->length * 0.01 * width_or_height;
+    case RSVG_UNIT_EMS:
+        return in->length * RSVG_DEFAULT_FONT_SIZE;
+    case RSVG_UNIT_EXS:
+        /* TODO: should use real x-height of default font */
+        return in->length * RSVG_DEFAULT_FONT_SIZE * 0.5;
+    case RSVG_UNIT_PX:
+        return in->length;
+    case RSVG_UNIT_CM:
+        return in->length / 2.54 * pixels_per_inch;
+    case RSVG_UNIT_MM:
+        return in->length / 25.4 * pixels_per_inch;
+    case RSVG_UNIT_IN:
+        return in->length * pixels_per_inch;
+    case RSVG_UNIT_PT:
+        return in->length / 72.0 * pixels_per_inch;
+    case RSVG_UNIT_PC:
+        return in->length / 6.0 * pixels_per_inch;
+    case RSVG_UNIT_UNKNOWN:
+    default:
+        g_assert_not_reached();
+        return 0.0;
+    }
+}
+
 /**
  * rsvg_handle_get_dimensions:
  * @handle: A #RsvgHandle
@@ -1390,11 +1423,10 @@ rsvg_handle_get_dimensions_sub (RsvgHandle * handle, RsvgDimensionData * dimensi
         bbox.rect.width = root->vbox.rect.width;
         bbox.rect.height = root->vbox.rect.height;
 
-        dimension_data->width = (int) (_rsvg_css_hand_normalize_length (&root->w, handle->priv->dpi_x,
-                                       bbox.rect.width + bbox.rect.x * 2, 12) + 0.5);
-        dimension_data->height = (int) (_rsvg_css_hand_normalize_length (&root->h, handle->priv->dpi_y,
-                                         bbox.rect.height + bbox.rect.y * 2,
-                                         12) + 0.5);
+        dimension_data->width = (int) (rsvg_hand_normalize_length (&root->w, handle->priv->dpi_x,
+                                       bbox.rect.width + bbox.rect.x * 2) + 0.5);
+        dimension_data->height = (int) (rsvg_hand_normalize_length (&root->h, handle->priv->dpi_y,
+                                         bbox.rect.height + bbox.rect.y * 2) + 0.5);
     }
 
     dimension_data->em = dimension_data->width;

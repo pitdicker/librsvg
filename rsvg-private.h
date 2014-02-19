@@ -461,14 +461,6 @@ void rsvg_bbox_insert   (RsvgBbox * dst, RsvgBbox * src);
 G_GNUC_INTERNAL
 void rsvg_bbox_clip     (RsvgBbox * dst, RsvgBbox * src);
 G_GNUC_INTERNAL
-double _rsvg_css_normalize_length       (const RsvgLength * in, RsvgDrawingCtx * ctx, char dir);
-G_GNUC_INTERNAL
-double _rsvg_css_hand_normalize_length  (const RsvgLength * in, gdouble pixels_per_inch,
-                                         gdouble width_or_height, gdouble font_size);
-G_GNUC_INTERNAL
-guint rsvg_normalize_stroke_dasharray (const RsvgLengthList src, double **dst, const RsvgDrawingCtx *ctx);
-double _rsvg_css_normalize_font_size    (RsvgState * state, RsvgDrawingCtx * ctx);
-G_GNUC_INTERNAL
 void _rsvg_push_view_box    (RsvgDrawingCtx * ctx, double w, double h);
 G_GNUC_INTERNAL
 void _rsvg_pop_view_box     (RsvgDrawingCtx * ctx);

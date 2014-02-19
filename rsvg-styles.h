@@ -194,6 +194,12 @@ typedef struct _StyleValueData {
     gboolean important;
 } StyleValueData;
 
+typedef enum {
+    HORIZONTAL,
+    VERTICAL,
+    NO_DIR
+} RsvgLengthDir;
+
 G_GNUC_INTERNAL
 RsvgState *rsvg_state_new (void);
 
@@ -246,7 +252,15 @@ G_GNUC_INTERNAL
 void rsvg_state_reinherit_top   (const RsvgDrawingCtx *ctx, RsvgState *state, const int dominate);
 
 G_GNUC_INTERNAL
-void rsvg_state_reconstruct	(RsvgState *state, RsvgNode *current);
+void rsvg_state_reconstruct     (RsvgState *state, RsvgNode *current);
+
+G_GNUC_INTERNAL
+double rsvg_normalize_length           (const RsvgLength in, const RsvgDrawingCtx *ctx,
+                                        const RsvgLengthDir dir);
+G_GNUC_INTERNAL
+double rsvg_normalize_font_size        (const RsvgState *state, const RsvgDrawingCtx *ctx);
+G_GNUC_INTERNAL
+guint  rsvg_normalize_stroke_dasharray (const RsvgLengthList src, double **dst, const RsvgDrawingCtx *ctx);
 
 G_END_DECLS
 
