@@ -264,7 +264,12 @@ typedef struct {
 } RsvgLength;
 
 typedef struct {
-    guint       number_of_items;
+    guint   n_items;
+    double *items;
+} RsvgNumberList;
+
+typedef struct {
+    guint       n_items;
     RsvgLength *items;
 } RsvgLengthList;
 

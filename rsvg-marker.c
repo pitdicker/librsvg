@@ -54,7 +54,7 @@ rsvg_node_marker_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * 
         if ((value = rsvg_property_bag_lookup (atts, "class")))
             klazz = value;
         if ((value = rsvg_property_bag_lookup (atts, "viewBox")))
-            marker->vbox = rsvg_css_parse_vbox (value);
+            rsvg_parse_viewbox (value, &marker->vbox);
         if ((value = rsvg_property_bag_lookup (atts, "refX")))
             _rsvg_parse_prop_length (value, &marker->refX, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "refY")))

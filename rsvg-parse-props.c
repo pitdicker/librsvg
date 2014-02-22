@@ -63,6 +63,19 @@ rsvg_casecmp_keyword (const void *str, const void *b)
 
 #define rsvg_match_keyword(str, keywords, prop_src) bsearch (str, keywords, sizeof (keywords) / sizeof (keywords[0]), sizeof (keywords[0]), (prop_src == CSS_VALUE)? rsvg_casecmp_keyword : rsvg_cmp_keyword)
 
+static gboolean
+_rsvg_is_wsp (const char c)
+{
+    switch (c) {
+    case ' ': case '\t': case '\r': case '\n':
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
+/* ========================================================================== */
+
 /**
  * _rsvg_parse_number:
  * Parse a number using g_ascii_strtod, but do extra checks to ensure the number
@@ -171,25 +184,21 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
 }
 
 /**
- * _rsvg_skip_comma_wsp:
+ * _rsvg_parse_list_next_item:
  * *end is set to the first character that follows the comma-whitespace
- * Returns TRUE is a comma is found (which implies something has to follow)
+ * Returns TRUE if a comma is found (which implies something has to follow)
  */
 gboolean
-_rsvg_skip_comma_wsp (const char *str, const char **end)
+_rsvg_parse_list_next_item (const char *str, const char **end)
 {
     g_assert (str != NULL);
 
-    /* skip whitespace */
-    while (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n')
+    while (_rsvg_is_wsp (*str))
         str++;
 
     if (*str == ',') {
-        /* skip optional comma */
         str++;
-
-        /* skip whitespace */
-        while (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n')
+        while (_rsvg_is_wsp (*str))
             str++;
 
         *end = str;
@@ -198,6 +207,31 @@ _rsvg_skip_comma_wsp (const char *str, const char **end)
         *end = str;
         return FALSE;
     }
+}
+
+static guint
+_rsvg_parse_list_count_items (const char *str)
+{
+    guint i = 0;
+
+    g_assert (str != NULL);
+
+    /* ensure str does not start with wsp */
+    if (_rsvg_is_wsp (*str) || *str == '\0')
+        return 0;
+
+    /* count number of items (assuming an item can not contain comma-wsp) */
+    while (*str != '\0') {
+        if (*str == ',')
+            return 0;
+
+        while (!_rsvg_is_wsp (*str) && *str != ',' && *str != '\0')
+            str++;
+        i++;
+
+        _rsvg_parse_list_next_item (str, &str);
+    }
+    return i;
 }
 
 static char *
@@ -221,6 +255,8 @@ rsvg_get_url_string (const char *str)
 
 /* ========================================================================== */
 
+/* Parsers for basic datatypes or generic attributes */
+
 gboolean
 _rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc prop_src)
 {
@@ -238,42 +274,29 @@ _rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc 
 }
 
 gboolean
-_rsvg_parse_length_list (const char *str, RsvgLengthList *result, const RsvgPropSrc prop_src)
+_rsvg_parse_number_list (const char *str, RsvgNumberList *result, const RsvgPropSrc prop_src)
 {
-    RsvgLengthList list;
+    RsvgNumberList list;
     const char *tmp;
     guint i;
 
     g_assert (str != NULL);
 
-    if (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n' || *str == ',' || *str == '\0') {
-        /* str starts with comma-wsp */
+    list.n_items = _rsvg_parse_list_count_items (str);
+    if (list.n_items == 0)
         return FALSE;
-    }
+    list.items = g_new (double, list.n_items);
 
-    /* count number of items */
-    list.number_of_items = 0;
-    tmp = str;
-    while (*tmp != '\0') {
-        while (*tmp != ' ' && *tmp != '\t' && *tmp != '\r' && *tmp != '\n' && *tmp != ',' && *tmp != '\0')
-            tmp++;
-
-        list.number_of_items++;
-        _rsvg_skip_comma_wsp (tmp, &tmp);
-    }
-
-    list.items = g_new (RsvgLength, list.number_of_items);
-
-    /* parse the lengths */
-    for (i = 0; i < list.number_of_items; i++) {
-        list.items[i] = _rsvg_parse_length (str, &tmp, prop_src);
+    /* parse the numbers */
+    for (i = 0; i < list.n_items; i++) {
+        list.items[i] = _rsvg_parse_number (str, &tmp, prop_src);
         if (str == tmp)
             goto invalid_list;
         str = tmp;
 
         /* if this is not the last item skip comma-whitespace */
-        if (i + 1 != list.number_of_items) {
-            _rsvg_skip_comma_wsp (str, &tmp);
+        if (i + 1 != list.n_items) {
+            _rsvg_parse_list_next_item (str, &tmp);
             if (str == tmp)
                 goto invalid_list;
             str = tmp;
@@ -291,6 +314,93 @@ invalid_list:
     return FALSE;
 }
 
+gboolean
+_rsvg_parse_length_list (const char *str, RsvgLengthList *result, const RsvgPropSrc prop_src)
+{
+    RsvgLengthList list;
+    const char *tmp;
+    guint i;
+
+    g_assert (str != NULL);
+
+    list.n_items = _rsvg_parse_list_count_items (str);
+    if (list.n_items == 0)
+        return FALSE;
+    list.items = g_new (RsvgLength, list.n_items);
+
+    /* parse the lengths */
+    for (i = 0; i < list.n_items; i++) {
+        list.items[i] = _rsvg_parse_length (str, &tmp, prop_src);
+        if (str == tmp)
+            goto invalid_list;
+        str = tmp;
+
+        /* if this is not the last item skip comma-whitespace */
+        if (i + 1 != list.n_items) {
+            _rsvg_parse_list_next_item (str, &tmp);
+            if (str == tmp)
+                goto invalid_list;
+            str = tmp;
+        }
+    }
+
+    if (*str != '\0')
+        goto invalid_list;
+
+    *result = list;
+    return TRUE;
+
+invalid_list:
+    g_free (list.items);
+    return FALSE;
+}
+
+gboolean
+rsvg_parse_viewbox (const char *str, RsvgViewBox *result)
+{
+    RsvgViewBox vb;
+    const char *tmp;
+    vb.active = TRUE;
+
+    g_assert (str != NULL);
+
+    vb.rect.x = _rsvg_parse_number (str, &tmp, SVG_ATTRIBUTE);
+    if (str == tmp)
+        return FALSE;
+    str = tmp;
+    _rsvg_parse_list_next_item (str, &tmp);
+    if (str == tmp)
+        return FALSE;
+    str = tmp;
+
+    vb.rect.y = _rsvg_parse_number (str, &tmp, SVG_ATTRIBUTE);
+    if (str == tmp)
+        return FALSE;
+    str = tmp;
+    _rsvg_parse_list_next_item (str, &tmp);
+    if (str == tmp)
+        return FALSE;
+    str = tmp;
+
+    vb.rect.width = _rsvg_parse_number (str, &tmp, SVG_ATTRIBUTE);
+    if (str == tmp || vb.rect.width < 0.0)
+        return FALSE;
+    str = tmp;
+    _rsvg_parse_list_next_item (str, &tmp);
+    if (str == tmp)
+        return FALSE;
+    str = tmp;
+
+    vb.rect.height = _rsvg_parse_number (str, &tmp, SVG_ATTRIBUTE);
+    if (str == tmp || vb.rect.height < 0.0)
+        return FALSE;
+    str = tmp;
+    if (*str != '\0')
+        return FALSE;
+
+    *result = vb;
+    return TRUE;
+}
 
 static gboolean
 _rsvg_parse_opacity (const char *str, guint8 *result, const RsvgPropSrc prop_src)
@@ -309,6 +419,8 @@ _rsvg_parse_opacity (const char *str, guint8 *result, const RsvgPropSrc prop_src
 }
 
 /* ========================================================================== */
+
+/* Parsers for presentation attributes */
 
 static gboolean
 rsvg_parse_direction (const char *str, PangoDirection *result, const RsvgPropSrc prop_src)
@@ -694,7 +806,7 @@ rsvg_parse_stroke_dasharray (const char *str, RsvgLengthList *result, const Rsvg
     gboolean nonzero_length = FALSE;
 
     if (rsvg_keyword_cmp (str, "none", prop_src)) {
-        result->number_of_items = 0;
+        result->n_items = 0;
         result->items = NULL;
         return TRUE;
     }
@@ -704,7 +816,7 @@ rsvg_parse_stroke_dasharray (const char *str, RsvgLengthList *result, const Rsvg
 
     /* make sure there are no values with a negative value and the sum of
        values is not zero */
-    for (i = 0; i < list.number_of_items; i++) {
+    for (i = 0; i < list.n_items; i++) {
         if (list.items[i].length > 0.0) {
             nonzero_length = TRUE;
         } else if (list.items[i].length < 0.0) {
@@ -714,7 +826,7 @@ rsvg_parse_stroke_dasharray (const char *str, RsvgLengthList *result, const Rsvg
     }
     if (nonzero_length == FALSE) {
         /* handle as if a value of none were specified */
-        list.number_of_items = 0;
+        list.n_items = 0;
         list.items = NULL;
     }
 

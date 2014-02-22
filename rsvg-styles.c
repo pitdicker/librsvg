@@ -162,8 +162,8 @@ rsvg_state_clone (RsvgState *dst, const RsvgState *src)
     rsvg_paint_server_ref (dst->stroke);
 
     if (src->stroke_dasharray.items != NULL) {
-        dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.number_of_items);
-        for (i = 0; i < src->stroke_dasharray.number_of_items; i++)
+        dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.n_items);
+        for (i = 0; i < src->stroke_dasharray.n_items; i++)
             dst->stroke_dasharray.items[i] = src->stroke_dasharray.items[i];
     }
 
@@ -279,9 +279,9 @@ rsvg_state_inherit_run (RsvgState *dst, const RsvgState *src,
         if (dst->stroke_dasharray.items != NULL)
             g_free (dst->stroke_dasharray.items);
 
-        dst->stroke_dasharray.number_of_items = src->stroke_dasharray.number_of_items;
-        dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.number_of_items);
-        for (i = 0; i < src->stroke_dasharray.number_of_items; i++)
+        dst->stroke_dasharray.n_items = src->stroke_dasharray.n_items;
+        dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.n_items);
+        for (i = 0; i < src->stroke_dasharray.n_items; i++)
             dst->stroke_dasharray.items[i] = src->stroke_dasharray.items[i];
     }
 
@@ -1343,20 +1343,20 @@ rsvg_normalize_stroke_dasharray (const RsvgLengthList src,
     gboolean is_even = FALSE;
     guint i, n_dashes;
 
-    g_assert (src.number_of_items != 0 && src.items != NULL);
+    g_assert (src.n_items != 0 && src.items != NULL);
 
-    is_even = (src.number_of_items % 2 == 0);
-    n_dashes = (is_even? 1 : 2) * src.number_of_items;
+    is_even = (src.n_items % 2 == 0);
+    n_dashes = (is_even? 1 : 2) * src.n_items;
 
     result = g_new (double, n_dashes);
 
-    for (i = 0; i < src.number_of_items; i++)
+    for (i = 0; i < src.n_items; i++)
         result[i] = rsvg_normalize_length (src.items[i], ctx, NO_DIR);
 
     /* an odd number of dashes gets repeated */
     if (!is_even) {
         for (; i < n_dashes; i++)
-            result[i] = result[i - src.number_of_items];
+            result[i] = result[i - src.n_items];
     }
 
     *dst = result;

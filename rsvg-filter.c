@@ -1055,7 +1055,7 @@ struct _RsvgFilterPrimitiveConvolveMatrix {
     RsvgFilterPrimitive super;
     double *KernelMatrix;
     double divisor;
-    gint orderx, ordery;
+    guint orderx, ordery;
     double dx, dy;
     double bias;
     gint targetx, targety;
@@ -1068,7 +1068,7 @@ rsvg_filter_primitive_convolve_matrix_render (RsvgFilterPrimitive * self, RsvgFi
 {
     guchar ch;
     gint x, y;
-    gint i, j;
+    guint i, j;
     gint rowstride, height, width;
     RsvgIRect boundarys;
 
@@ -1208,12 +1208,13 @@ rsvg_filter_primitive_convolve_matrix_set_atts (RsvgNode * self,
 {
     const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveConvolveMatrix *filter;
-    gint i, j;
-    guint listlen = 0;
+    RsvgNumberList kernelMatrix;
+    guint i, j;
     gboolean has_target_x = 0;
     gboolean has_target_y = 0;
 
     filter = (RsvgFilterPrimitiveConvolveMatrix *) self;
+    kernelMatrix.n_items = 0;
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "in")))
@@ -1256,8 +1257,10 @@ rsvg_filter_primitive_convolve_matrix_set_atts (RsvgNode * self,
         if ((value = rsvg_property_bag_lookup (atts, "kernelUnitLength")))
             rsvg_css_parse_number_optional_number (value, &filter->dx, &filter->dy);
 
-        if ((value = rsvg_property_bag_lookup (atts, "kernelMatrix")))
-            filter->KernelMatrix = rsvg_css_parse_number_list (value, &listlen);
+        if ((value = rsvg_property_bag_lookup (atts, "kernelMatrix"))) {
+            _rsvg_parse_number_list (value, &kernelMatrix, SVG_ATTRIBUTE);
+            filter->KernelMatrix = kernelMatrix.items;
+        }
 
         if ((value = rsvg_property_bag_lookup (atts, "edgeMode"))) {
             if (!strcmp (value, "wrap"))
@@ -1277,7 +1280,7 @@ rsvg_filter_primitive_convolve_matrix_set_atts (RsvgNode * self,
         rsvg_set_presentation_props (ctx, self->state, "feConvolveMatrix", klazz, id, atts);
     }
 
-    if ((gint) listlen != filter->orderx * filter->ordery)
+    if (kernelMatrix.n_items != filter->orderx * filter->ordery)
         filter->orderx = filter->ordery = 0;
 
     if (filter->divisor == 0) {
@@ -1991,10 +1994,11 @@ rsvg_filter_primitive_colour_matrix_set_atts (RsvgNode * self, RsvgHandle * ctx,
 {
     const char *klazz = NULL, *id = NULL, *value;
     RsvgFilterPrimitiveColourMatrix *filter;
+    RsvgNumberList kernelMatrix;
     gint type = 0;
-    guint listlen = 0;
 
     filter = (RsvgFilterPrimitiveColourMatrix *) self;
+    kernelMatrix.n_items = 0;
 
     if (rsvg_property_bag_size (atts)) {
         if ((value = rsvg_property_bag_lookup (atts, "in")))
@@ -2010,12 +2014,12 @@ rsvg_filter_primitive_colour_matrix_set_atts (RsvgNode * self, RsvgHandle * ctx,
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "values"))) {
-            unsigned int i;
-            double *temp = rsvg_css_parse_number_list (value, &listlen);
-            filter->KernelMatrix = g_new (int, listlen);
-            for (i = 0; i < listlen; i++)
-                filter->KernelMatrix[i] = temp[i] * 255.;
-            g_free (temp);
+            guint i;
+            _rsvg_parse_number_list (value, &kernelMatrix, SVG_ATTRIBUTE);
+            filter->KernelMatrix = g_new (int, kernelMatrix.n_items);
+            for (i = 0; i < kernelMatrix.n_items; i++)
+                filter->KernelMatrix[i] = kernelMatrix.items[i] * 255.;
+            g_free (kernelMatrix.items);
         }
         if ((value = rsvg_property_bag_lookup (atts, "type"))) {
             if (!strcmp (value, "matrix"))
@@ -2040,14 +2044,14 @@ rsvg_filter_primitive_colour_matrix_set_atts (RsvgNode * self, RsvgHandle * ctx,
     }
 
     if (type == 0) {
-        if (listlen != 20) {
+        if (kernelMatrix.n_items != 20) {
             if (filter->KernelMatrix != NULL)
                 g_free (filter->KernelMatrix);
             filter->KernelMatrix = g_new0 (int, 20);
         }
     } else if (type == 1) {
         float s;
-        if (listlen != 0) {
+        if (kernelMatrix.n_items != 0) {
             s = filter->KernelMatrix[0];
             g_free (filter->KernelMatrix);
         } else
@@ -2067,7 +2071,7 @@ rsvg_filter_primitive_colour_matrix_set_atts (RsvgNode * self, RsvgHandle * ctx,
     } else if (type == 2) {
         double cosval, sinval, arg;
 
-        if (listlen != 0) {
+        if (kernelMatrix.n_items != 0) {
             arg = (double) filter->KernelMatrix[0] / 255.;
             g_free (filter->KernelMatrix);
         } else
@@ -2379,12 +2383,14 @@ rsvg_node_component_transfer_function_set_atts (RsvgNode * self,
         }
         if ((value = rsvg_property_bag_lookup (atts, "tableValues"))) {
             unsigned int i;
-            double *temp = rsvg_css_parse_number_list (value,
-                                                       &data->nbTableValues);
+            RsvgNumberList temp;
+            _rsvg_parse_number_list (value, &temp, SVG_ATTRIBUTE);
+            data->nbTableValues = temp.n_items;
             data->tableValues = g_new (gint, data->nbTableValues);
+
             for (i = 0; i < data->nbTableValues; i++)
-                data->tableValues[i] = temp[i] * 255.;
-            g_free (temp);
+                data->tableValues[i] = temp.items[i] * 255.;
+            g_free (temp.items);
         }
         if ((value = rsvg_property_bag_lookup (atts, "slope"))) {
             data->slope = g_ascii_strtod (value, NULL) * 255.;

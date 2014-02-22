@@ -444,7 +444,7 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
         cairo_set_miter_limit (render->cr, state->stroke_miterlimit);
         cairo_set_line_cap (render->cr, state->stroke_linecap);
         cairo_set_line_join (render->cr, state->stroke_linejoin);
-        if (state->stroke_dasharray.number_of_items > 0) {
+        if (state->stroke_dasharray.n_items > 0) {
             n_dashes = rsvg_normalize_stroke_dasharray (state->stroke_dasharray,
                                                         &dasharray, ctx);
             cairo_set_dash (render->cr, dasharray, n_dashes,
@@ -491,7 +491,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
     cairo_set_miter_limit (cr, state->stroke_miterlimit);
     cairo_set_line_cap (cr, state->stroke_linecap);
     cairo_set_line_join (cr, state->stroke_linejoin);
-    if (state->stroke_dasharray.number_of_items > 0) {
+    if (state->stroke_dasharray.n_items > 0) {
         n_dashes = rsvg_normalize_stroke_dasharray (state->stroke_dasharray,
                                                     &dasharray, ctx);
         cairo_set_dash (render->cr, dasharray, n_dashes,

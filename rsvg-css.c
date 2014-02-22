@@ -46,46 +46,6 @@
 #define SETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = TRUE;} G_STMT_END
 #define UNSETINHERIT() G_STMT_START {if (inherit != NULL) *inherit = FALSE;} G_STMT_END
 
-/**
- * rsvg_css_parse_vbox:
- * @vbox: The CSS viewBox
- * @x : The X output
- * @y: The Y output
- * @w: The Width output
- * @h: The Height output
- *
- * Returns:
- */
-RsvgViewBox
-rsvg_css_parse_vbox (const char *vbox)
-{
-    RsvgViewBox vb;
-    gdouble *list;
-    guint list_len;
-    vb.active = FALSE;
-
-    vb.rect.x = vb.rect.y = 0;
-    vb.rect.width = vb.rect.height = 0;
-
-    list = rsvg_css_parse_number_list (vbox, &list_len);
-
-    if (!(list && list_len))
-        return vb;
-    else if (list_len != 4) {
-        g_free (list);
-        return vb;
-    } else {
-        vb.rect.x = list[0];
-        vb.rect.y = list[1];
-        vb.rect.width = list[2];
-        vb.rect.height = list[3];
-        vb.active = TRUE;
-
-        g_free (list);
-        return vb;
-    }
-}
-
 static gint
 rsvg_css_clip_rgb_percent (const char *s, double max)
 {
@@ -322,35 +282,6 @@ rsvg_css_parse_list (const char *in_str, guint * out_list_len)
     }
 
     return string_array;
-}
-
-gdouble *
-rsvg_css_parse_number_list (const char *in_str, guint * out_list_len)
-{
-    gchar **string_array;
-    gdouble *output;
-    guint len, i;
-
-    if (out_list_len)
-        *out_list_len = 0;
-
-    string_array = rsvg_css_parse_list (in_str, &len);
-
-    if (!(string_array && len))
-        return NULL;
-
-    output = g_new (gdouble, len);
-
-    /* TODO: some error checking */
-    for (i = 0; i < len; i++)
-        output[i] = g_ascii_strtod (string_array[i], NULL);
-
-    g_strfreev (string_array);
-
-    if (out_list_len != NULL)
-        *out_list_len = len;
-
-    return output;
 }
 
 void
