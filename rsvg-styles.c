@@ -422,8 +422,8 @@ rsvg_parse_presentation_attr (const RsvgHandle * ctx,
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-dasharray", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-dashoffset", atts);
-    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke_linecap", atts);
-    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke_linejoin", atts);
+    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-linecap", atts);
+    rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-linejoin", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-miterlimit", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-opacity", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "stroke-width", atts);
