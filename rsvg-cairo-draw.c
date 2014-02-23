@@ -159,16 +159,12 @@ _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
 }
 
 static void
-_set_source_rsvg_solid_colour (RsvgDrawingCtx * ctx,
-                               RsvgSolidColour * colour, guint8 opacity, guint32 current_colour)
+_set_source_rsvg_solid_colour (const RsvgDrawingCtx *ctx,
+                               const guint32 argb, const guint8 opacity)
 {
     RsvgCairoRender *render = RSVG_CAIRO_RENDER (ctx->render);
     cairo_t *cr = render->cr;
-    guint32 argb = colour->argb;
     double r, g, b, a;
-
-    if (colour->currentcolour)
-        argb = current_colour;
 
     r = ((argb >> 16) & 0xff) / 255.0;
     g = ((argb >>  8) & 0xff) / 255.0;
@@ -329,21 +325,27 @@ _set_source_rsvg_pattern (RsvgDrawingCtx * ctx,
 static void
 _set_source_rsvg_paint_server (RsvgDrawingCtx * ctx,
                                guint32 current_color_rgb,
-                               RsvgPaintServer * ps,
+                               RsvgPaintServer ps,
                                guint8 opacity, RsvgBbox bbox, guint32 current_colour)
 {
-    switch (ps->type) {
-    case RSVG_PAINT_SERVER_LIN_GRAD:
-        _set_source_rsvg_linear_gradient (ctx, ps->core.lingrad, current_color_rgb, opacity, bbox);
-        break;
-    case RSVG_PAINT_SERVER_RAD_GRAD:
-        _set_source_rsvg_radial_gradient (ctx, ps->core.radgrad, current_color_rgb, opacity, bbox);
+    switch (ps.type) {
+    case RSVG_PAINT_SERVER_NONE:
+        g_assert (ps.type != RSVG_PAINT_SERVER_NONE);
         break;
     case RSVG_PAINT_SERVER_SOLID:
-        _set_source_rsvg_solid_colour (ctx, ps->core.colour, opacity, current_colour);
+        _set_source_rsvg_solid_colour (ctx, ps.core.color, opacity);
+        break;
+    case RSVG_PAINT_SERVER_CURRENT_COLOR:
+        _set_source_rsvg_solid_colour (ctx, current_colour, opacity);
+        break;
+    case RSVG_PAINT_SERVER_LIN_GRAD:
+        _set_source_rsvg_linear_gradient (ctx, ps.core.lingrad, current_color_rgb, opacity, bbox);
+        break;
+    case RSVG_PAINT_SERVER_RAD_GRAD:
+        _set_source_rsvg_radial_gradient (ctx, ps.core.radgrad, current_color_rgb, opacity, bbox);
         break;
     case RSVG_PAINT_SERVER_PATTERN:
-        _set_source_rsvg_pattern (ctx, ps->core.pattern, opacity, bbox);
+        _set_source_rsvg_pattern (ctx, ps.core.pattern, opacity, bbox);
         break;
     }
 }
@@ -410,7 +412,7 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
     bbox.virgin = 0;
 
     rotation = pango_gravity_to_rotation (gravity);
-    if (state->fill) {
+    if (state->fill.type != RSVG_PAINT_SERVER_NONE) {
         cairo_save (render->cr);
         cairo_move_to (render->cr, x, y);
         rsvg_bbox_insert (&render->bbox, &bbox);
@@ -425,7 +427,7 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
         cairo_restore (render->cr);
     }
 
-    if (state->stroke) {
+    if (state->stroke.type != RSVG_PAINT_SERVER_NONE) {
         cairo_save (render->cr);
         cairo_move_to (render->cr, x, y);
         rsvg_bbox_insert (&render->bbox, &bbox);
@@ -471,12 +473,15 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
     double *dasharray;
     guint n_dashes;
 
-    if (state->fill == NULL && state->stroke == NULL)
+    if (state->fill.type == RSVG_PAINT_SERVER_NONE &&
+        state->stroke.type == RSVG_PAINT_SERVER_NONE)
         return;
 
-    need_tmpbuf = ((state->fill != NULL) && (state->stroke != NULL) && state->opacity != 0xff)
-        || state->clip_path || state->mask || state->filter
-        || (state->comp_op != CAIRO_OPERATOR_OVER);
+    need_tmpbuf = (state->fill.type != RSVG_PAINT_SERVER_NONE &&
+                   state->stroke.type != RSVG_PAINT_SERVER_NONE &&
+                   state->opacity != 0xff)
+                  || state->clip_path || state->mask || state->filter
+                  || (state->comp_op != CAIRO_OPERATOR_OVER);
 
     if (need_tmpbuf)
         rsvg_cairo_push_discrete_layer (ctx);
@@ -513,7 +518,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
        _rendering_ time speedups, are these rather expensive operations
        really needed here? */
 
-    if (state->fill != NULL) {
+    if (state->fill.type != RSVG_PAINT_SERVER_NONE) {
         RsvgBbox fb;
         rsvg_bbox_init (&fb, &state->affine);
         cairo_fill_extents (cr, &fb.rect.x, &fb.rect.y, &fb.rect.width, &fb.rect.height);
@@ -522,7 +527,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
         fb.virgin = 0;
         rsvg_bbox_insert (&bbox, &fb);
     }
-    if (state->stroke != NULL) {
+    if (state->stroke.type != RSVG_PAINT_SERVER_NONE) {
         RsvgBbox sb;
         rsvg_bbox_init (&sb, &state->affine);
         cairo_stroke_extents (cr, &sb.rect.x, &sb.rect.y, &sb.rect.width, &sb.rect.height);
@@ -536,7 +541,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
 
     rsvg_bbox_insert (&render->bbox, &bbox);
 
-    if (state->fill != NULL) {
+    if (state->fill.type != RSVG_PAINT_SERVER_NONE) {
         int opacity;
 
         cairo_set_fill_rule (cr, state->fill_rule);
@@ -551,13 +556,13 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
                                        state->fill,
                                        opacity, bbox, rsvg_current_state (ctx)->color);
 
-        if (state->stroke != NULL)
+        if (state->stroke.type != RSVG_PAINT_SERVER_NONE)
             cairo_fill_preserve (cr);
         else
             cairo_fill (cr);
     }
 
-    if (state->stroke != NULL) {
+    if (state->stroke.type != RSVG_PAINT_SERVER_NONE) {
         int opacity;
         if (!need_tmpbuf)
             opacity = (state->stroke_opacity * state->opacity) / 255;

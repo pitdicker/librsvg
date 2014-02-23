@@ -97,7 +97,7 @@ struct _RsvgState {
     guint32            color;
     PangoDirection     direction;
     RsvgEnableBackgroundType enable_background;
-    RsvgPaintServer   *fill;
+    RsvgPaintServer    fill;
     guint8             fill_opacity;        /* 0..255 */
     cairo_fill_rule_t  fill_rule;
     RsvgFilter        *filter;
@@ -119,7 +119,7 @@ struct _RsvgState {
     cairo_antialias_t  shape_rendering;
     guint32            stop_color;          /* rgb */
     guint8             stop_opacity;        /* 0..255 */
-    RsvgPaintServer   *stroke;
+    RsvgPaintServer    stroke;
     RsvgLengthList     stroke_dasharray;
     RsvgLength         stroke_dashoffset;
     cairo_line_cap_t   stroke_linecap;

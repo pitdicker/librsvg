@@ -3,8 +3,7 @@
 /*
    rsvg-parse-props.c: Parse SVG presentation properties
 
-   Copyright (C) 2000 Eazel, Inc.
-   Copyright (C) 2002 Dom Lachowicz <cinamod@hotmail.com>
+   Copyright (C) 2014 Paul Dicker <pitdicker@gmail.com>
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public License as
@@ -21,7 +20,7 @@
    Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.
 
-   Author: Raph Levien <raph@artofcode.com>
+   Author: Paul Dicker <pitdicker@gmail.com>
 */
 #include "config.h"
 #include "rsvg-parse-props.h"
@@ -30,7 +29,6 @@
 
 #include "rsvg-styles.h"
 #include "rsvg-css.h"
-#include "rsvg-paint-server.h"
 
 /**
  * rsvg_keyword_cmp:
@@ -43,8 +41,14 @@ rsvg_keyword_cmp (const char *s1, const char *s2, const RsvgPropSrc prop_src)
     return (((prop_src == CSS_VALUE)? g_ascii_strcasecmp : strcmp) (s1, s2) == 0);
 }
 
+static gboolean
+rsvg_keyword_ncmp (const char *s1, const char *s2, const RsvgPropSrc prop_src)
+{
+    return (((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (s1, s2, strlen (s2)) == 0);
+}
+
 static int
-rsvg_cmp_keyword (const void *str, const void *b)
+rsvg_match_keyword_cmp (const void *str, const void *b)
 {
     struct keywords {
         const char *keyword;
@@ -53,7 +57,7 @@ rsvg_cmp_keyword (const void *str, const void *b)
 }
 
 static int
-rsvg_casecmp_keyword (const void *str, const void *b)
+rsvg_match_keyword_casecmp (const void *str, const void *b)
 {
     struct keywords {
         const char *keyword;
@@ -61,7 +65,7 @@ rsvg_casecmp_keyword (const void *str, const void *b)
     return g_ascii_strcasecmp ((const char *) str, ((struct keywords *) b)->keyword);
 }
 
-#define rsvg_match_keyword(str, keywords, prop_src) bsearch (str, keywords, sizeof (keywords) / sizeof (keywords[0]), sizeof (keywords[0]), (prop_src == CSS_VALUE)? rsvg_casecmp_keyword : rsvg_cmp_keyword)
+#define rsvg_match_keyword(str, keywords, prop_src) bsearch (str, keywords, sizeof (keywords) / sizeof (keywords[0]), sizeof (keywords[0]), (prop_src == CSS_VALUE)? rsvg_match_keyword_casecmp : rsvg_match_keyword_cmp)
 
 static gboolean
 _rsvg_is_wsp (const char c)
@@ -152,28 +156,28 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
     if (**end == '%') {
         out.unit = RSVG_UNIT_PERCENTAGE;
         *end += 1;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "em", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "em", prop_src)) {
         out.unit = RSVG_UNIT_EMS;
         *end += 2;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "ex", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "ex", prop_src)) {
         out.unit = RSVG_UNIT_EXS;
         *end += 2;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "px", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "px", prop_src)) {
         out.unit = RSVG_UNIT_PX;
         *end += 2;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "in", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "in", prop_src)) {
         out.unit = RSVG_UNIT_IN;
         *end += 2;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "cm", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "cm", prop_src)) {
         out.unit = RSVG_UNIT_CM;
         *end += 2;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "mm", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "mm", prop_src)) {
         out.unit = RSVG_UNIT_MM;
         *end += 2;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "pt", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "pt", prop_src)) {
         out.unit = RSVG_UNIT_PT;
         *end += 2;
-    } else if ((((prop_src == CSS_VALUE)? g_ascii_strncasecmp : strncmp) (*end, "pc", 2) == 0)) {
+    } else if (rsvg_keyword_ncmp (*end, "pc", prop_src)) {
         out.unit = RSVG_UNIT_PC;
         *end += 2;
     } else {
@@ -812,56 +816,72 @@ rsvg_parse_clip_path (const RsvgDefs * defs, const char *str)
     return NULL;
 }
 
-/**
- * rsvg_parse_paint_server:
- * @defs: Defs for looking up gradients.
- * @str: The SVG paint specification string to parse.
- *
- * Parses the paint specification @str, creating a new paint server
- * object.
- *
- * Return value: The newly created paint server, or NULL on error.
- **/
-RsvgPaintServer *
-rsvg_parse_paint_server (gboolean * inherit, const RsvgDefs * defs, const char *str,
-                         guint32 current_color)
+static gboolean
+rsvg_parse_paint (const char *str, RsvgPaintServer *result,
+                  const RsvgPropSrc prop_src, const RsvgDefs * defs)
 {
+    RsvgPaintServer ps, ps_ref;
     char *name;
-    guint32 argb;
-    if (inherit != NULL)
-        *inherit = 1;
-    if (str == NULL || !strcmp (str, "none"))
-        return NULL;
+    RsvgNode *ref;
+    gboolean expect_color = TRUE;
+    gboolean has_ref = FALSE;
+    guint i;
 
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
+    if (rsvg_keyword_ncmp (str, "url(", prop_src)) {
+        expect_color = FALSE;
+        has_ref = TRUE;
+
+        for (i = 4; str[i] != ')'; i++) {
+            if (str[i] == '\0')
+                return FALSE;
+        }
+        name = g_strndup (str + 4, i - 4);
+        str += i + 1;
+
+        if (*str != '\0') {
+            expect_color = TRUE;
+            while (_rsvg_is_wsp (*str))
+                str++;
+        }
+
+        ref = rsvg_defs_lookup (defs, name);
         g_free (name);
 
-        if (val == NULL)
-            return NULL;
-        if (RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_LINEAR_GRADIENT)
-            return rsvg_paint_server_lin_grad ((RsvgLinearGradient *) val);
-        else if (RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_RADIAL_GRADIENT)
-            return rsvg_paint_server_rad_grad ((RsvgRadialGradient *) val);
-        else if (RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_PATTERN)
-            return rsvg_paint_server_pattern ((RsvgPattern *) val);
-        else
-            return NULL;
-    } else if (!strcmp (str, "inherit")) {
-        if (inherit != NULL)
-            *inherit = 0;
-        return rsvg_paint_server_solid (0);
-    } else if (!strcmp (str, "currentColor")) {
-        RsvgPaintServer *ps;
-        ps = rsvg_paint_server_solid_current_colour ();
-        return ps;
-    } else {
-        argb = 0xff000000;
-        rsvg_parse_color (str, &argb, CSS_VALUE);
-        return rsvg_paint_server_solid (argb);
+        if (ref == NULL) {
+            has_ref = FALSE;
+        } else if (RSVG_NODE_TYPE (ref) == RSVG_NODE_TYPE_LINEAR_GRADIENT) {
+            ps_ref.type = RSVG_PAINT_SERVER_LIN_GRAD;
+            ps_ref.core.lingrad = (RsvgLinearGradient *) ref;
+        } else if (RSVG_NODE_TYPE (ref) == RSVG_NODE_TYPE_RADIAL_GRADIENT) {
+            ps_ref.type = RSVG_PAINT_SERVER_RAD_GRAD;
+            ps_ref.core.radgrad = (RsvgRadialGradient *) ref;
+        } else if (RSVG_NODE_TYPE (ref) == RSVG_NODE_TYPE_PATTERN) {
+            ps_ref.type = RSVG_PAINT_SERVER_PATTERN;
+            ps_ref.core.pattern = (RsvgPattern *) ref;
+        } else {
+            has_ref = FALSE;
+        }
     }
+
+    if (expect_color) {
+        if (rsvg_keyword_cmp (str, "none", prop_src)) {
+            ps.type = RSVG_PAINT_SERVER_NONE;
+        } else if (rsvg_keyword_cmp (str, "currentColor", prop_src)) {
+            ps.type = RSVG_PAINT_SERVER_CURRENT_COLOR;
+        } else if (rsvg_parse_color (str, &ps.core.color, CSS_VALUE)) {
+            ps.type = RSVG_PAINT_SERVER_SOLID;
+        } else {
+            return FALSE;
+        }
+    }
+
+    if (has_ref)
+        *result = ps_ref;
+    else if (expect_color)
+        *result = ps;
+    else
+        return FALSE;
+    return TRUE;
 }
 
 /**
@@ -1466,11 +1486,8 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         else
             state->enable_background = RSVG_ENABLE_BACKGROUND_ACCUMULATE;
     } else if (g_str_equal (name, "fill")) {
-        /* TODO */
-        RsvgPaintServer *fill = state->fill;
-        state->fill =
-            rsvg_parse_paint_server (&state->has_fill_server, ctx->priv->defs, value, 0);
-        rsvg_paint_server_unref (fill);
+        if (rsvg_parse_paint (value, &state->fill, prop_src, ctx->priv->defs))
+            state->has_fill_server = TRUE;
     } else if (g_str_equal (name, "fill-opacity")) {
         if (_rsvg_parse_opacity (value, &state->fill_opacity, prop_src))
             state->has_fill_opacity = TRUE;
@@ -1556,11 +1573,8 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         if (_rsvg_parse_opacity (value, &state->stop_opacity, prop_src))
             state->has_stop_opacity = TRUE;
     } else if (g_str_equal (name, "stroke")) {
-        /* TODO */
-        RsvgPaintServer *stroke = state->stroke;
-        state->stroke =
-            rsvg_parse_paint_server (&state->has_stroke_server, ctx->priv->defs, value, 0);
-        rsvg_paint_server_unref (stroke);
+        if (rsvg_parse_paint (value, &state->stroke, prop_src, ctx->priv->defs))
+            state->has_stroke_server = TRUE;
     } else if (g_str_equal (name, "stroke-dasharray")) {
         if (rsvg_parse_stroke_dasharray (value, &state->stroke_dasharray, prop_src))
             state->has_dash = TRUE;

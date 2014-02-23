@@ -74,14 +74,15 @@ rsvg_state_init (RsvgState *state)
     /* presentation attributes */
     state->clip_path         = NULL;
     state->clip_rule         = CAIRO_FILL_RULE_WINDING;
-    state->color             = 0x000000; /* black */
+    state->color             = 0xff000000; /* black */
     state->direction         = PANGO_DIRECTION_LTR;
     state->enable_background = RSVG_ENABLE_BACKGROUND_ACCUMULATE;
-    state->fill              = rsvg_parse_paint_server (NULL, NULL, "#000", 0);
+    state->fill              = (RsvgPaintServer) {.type = RSVG_PAINT_SERVER_SOLID,
+                                                  .core.color = 0xff000000};
     state->fill_opacity      = 0xff;
     state->fill_rule         = CAIRO_FILL_RULE_WINDING;
     state->filter            = NULL;
-    state->flood_color       = 0x000000; /* black */
+    state->flood_color       = 0xff000000; /* black */
     state->flood_opacity     = 0xff;
     state->font_family       = g_strdup (RSVG_DEFAULT_FONT);
     state->font_size         = (RsvgLength) {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX};
@@ -97,9 +98,9 @@ rsvg_state_init (RsvgState *state)
     state->opacity           = 0xff;
     state->overflow          = FALSE;
     state->shape_rendering   = SHAPE_RENDERING_AUTO;
-    state->stop_color        = 0x000000; /* black */
+    state->stop_color        = 0xff000000; /* black */
     state->stop_opacity      = 0xff;
-    state->stroke            = NULL;
+    state->stroke            = (RsvgPaintServer) {.type = RSVG_PAINT_SERVER_NONE};
     state->stroke_dasharray  = (RsvgLengthList) {0, NULL};
     state->stroke_dashoffset = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     state->stroke_linecap    = CAIRO_LINE_CAP_BUTT;
@@ -155,11 +156,9 @@ rsvg_state_clone (RsvgState *dst, const RsvgState *src)
     /* keep old parent */
     dst->parent = parent;
 
-    /* duplicate pointers / increase refs */
+    /* duplicate pointers */
     dst->font_family = g_strdup (src->font_family);
     dst->lang = g_strdup (src->lang);
-    rsvg_paint_server_ref (dst->fill);
-    rsvg_paint_server_ref (dst->stroke);
 
     if (src->stroke_dasharray.items != NULL) {
         dst->stroke_dasharray.items = g_new (RsvgLength, src->stroke_dasharray.n_items);
@@ -189,12 +188,8 @@ rsvg_state_inherit_run (RsvgState *dst, const RsvgState *src,
         dst->flood_color = src->flood_color;
     if (function (dst->has_flood_opacity, src->has_flood_opacity))
         dst->flood_opacity = src->flood_opacity;
-    if (function (dst->has_fill_server, src->has_fill_server)) {
-        rsvg_paint_server_ref (src->fill);
-        if (dst->fill)
-            rsvg_paint_server_unref (dst->fill);
+    if (function (dst->has_fill_server, src->has_fill_server))
         dst->fill = src->fill;
-    }
     if (function (dst->has_fill_opacity, src->has_fill_opacity))
         dst->fill_opacity = src->fill_opacity;
     if (function (dst->has_fill_rule, src->has_fill_rule))
@@ -203,12 +198,8 @@ rsvg_state_inherit_run (RsvgState *dst, const RsvgState *src,
         dst->clip_rule = src->clip_rule;
     if (function (dst->overflow, src->overflow))
         dst->overflow = src->overflow;
-    if (function (dst->has_stroke_server, src->has_stroke_server)) {
-        rsvg_paint_server_ref (src->stroke);
-        if (dst->stroke)
-            rsvg_paint_server_unref (dst->stroke);
+    if (function (dst->has_stroke_server, src->has_stroke_server))
         dst->stroke = src->stroke;
-    }
     if (function (dst->has_stroke_opacity, src->has_stroke_opacity))
         dst->stroke_opacity = src->stroke_opacity;
     if (function (dst->has_stroke_width, src->has_stroke_width))
@@ -380,8 +371,6 @@ rsvg_state_finalize (const RsvgState *state)
 {
     g_free (state->font_family);
     g_free (state->lang);
-    rsvg_paint_server_unref (state->fill);
-    rsvg_paint_server_unref (state->stroke);
     g_free (state->stroke_dasharray.items);
     g_hash_table_unref (state->styles);
 }

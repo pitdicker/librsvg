@@ -24,9 +24,7 @@
 #ifndef RSVG_PARSE_PROPS_H
 #define RSVG_PARSE_PROPS_H
 
-#include <cairo.h>
-#include "rsvg.h"
-#include "rsvg-styles.h"
+#include "rsvg-private.h"
 
 G_BEGIN_DECLS
 
@@ -63,12 +61,6 @@ gboolean _rsvg_parse_length_list (const char *str, RsvgLengthList *result, const
 G_GNUC_INTERNAL
 gboolean rsvg_parse_viewbox      (const char *str, RsvgViewBox    *result);
 
-/* TODO: this one should not be nessesary in a header */
-G_GNUC_INTERNAL
-RsvgPaintServer * rsvg_parse_paint_server (gboolean * inherit,
-                                           const RsvgDefs * defs,
-                                           const char *str,
-                                           guint32 current_color);
 G_GNUC_INTERNAL
 void rsvg_parse_prop (const RsvgHandle *ctx,
                       RsvgState *state,

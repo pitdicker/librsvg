@@ -37,102 +37,6 @@
 
 #include "rsvg-css.h"
 
-RsvgPaintServer *
-rsvg_paint_server_solid (guint32 argb)
-{
-    RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
-
-    result->refcnt = 1;
-    result->type = RSVG_PAINT_SERVER_SOLID;
-    result->core.colour = g_new (RsvgSolidColour, 1);
-    result->core.colour->argb = argb;
-    result->core.colour->currentcolour = FALSE;
-
-    return result;
-}
-
-RsvgPaintServer *
-rsvg_paint_server_solid_current_colour (void)
-{
-    RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
-
-    result->refcnt = 1;
-    result->type = RSVG_PAINT_SERVER_SOLID;
-    result->core.colour = g_new (RsvgSolidColour, 1);
-    result->core.colour->currentcolour = TRUE;
-
-    return result;
-}
-
-RsvgPaintServer *
-rsvg_paint_server_lin_grad (RsvgLinearGradient * gradient)
-{
-    RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
-
-    result->refcnt = 1;
-    result->type = RSVG_PAINT_SERVER_LIN_GRAD;
-    result->core.lingrad = gradient;
-
-    return result;
-}
-
-RsvgPaintServer *
-rsvg_paint_server_rad_grad (RsvgRadialGradient * gradient)
-{
-    RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
-
-    result->refcnt = 1;
-    result->type = RSVG_PAINT_SERVER_RAD_GRAD;
-    result->core.radgrad = gradient;
-
-    return result;
-}
-
-RsvgPaintServer *
-rsvg_paint_server_pattern (RsvgPattern * pattern)
-{
-    RsvgPaintServer *result = g_new (RsvgPaintServer, 1);
-
-    result->refcnt = 1;
-    result->type = RSVG_PAINT_SERVER_PATTERN;
-    rsvg_pattern_fix_fallback (pattern);
-    result->core.pattern = pattern;
-
-    return result;
-}
-
-/**
- * rsvg_paint_server_ref:
- * @ps: The paint server object to reference.
- *
- * Reference a paint server object.
- **/
-void
-rsvg_paint_server_ref (RsvgPaintServer * ps)
-{
-    if (ps == NULL)
-        return;
-    ps->refcnt++;
-}
-
-/**
- * rsvg_paint_server_unref:
- * @ps: The paint server object to unreference.
- *
- * Unreference a paint server object.
- **/
-void
-rsvg_paint_server_unref (RsvgPaintServer * ps)
-{
-    if (ps == NULL)
-        return;
-    if (--ps->refcnt == 0) {
-        if (ps->type == RSVG_PAINT_SERVER_SOLID)
-            g_free (ps->core.colour);
-        g_free (ps);
-    }
-}
-
 static void
 rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
@@ -571,7 +475,6 @@ rsvg_radial_gradient_fix_fallback (RsvgRadialGradient * grad)
         }
     }
 }
-
 
 void
 rsvg_pattern_fix_fallback (RsvgPattern * pattern)
