@@ -576,26 +576,29 @@ _rsvg_parse_list_count_items (const char *str)
     return i;
 }
 
-static gboolean
-_rsvg_parse_funciri (const char *str, const char **end, RsvgNode **ref,
+static RsvgNode *
+_rsvg_parse_funciri (const char *str, const char **end,
                      const RsvgPropSrc prop_src, const RsvgDefs *defs)
 {
     char *name;
     guint len;
+    RsvgNode *ref;
+
+    *end = str;
 
     if (!rsvg_keyword_ncmp (str, "url(", prop_src))
-        return FALSE;
+        return NULL;
 
     for (len = 4; str[len] != ')'; len++) {
         if (str[len] == '\0')
-            return FALSE;
+            return NULL;
     }
     name = g_strndup (str + 4, len - 4);
     *end = str + len + 1;
 
-    *ref = rsvg_defs_lookup (defs, name);
+    ref = rsvg_defs_lookup (defs, name);
     g_free (name);
-    return TRUE;
+    return ref;
 }
 
 /* ========================================================================== */
@@ -768,17 +771,21 @@ _rsvg_parse_node_ref (const char *str, RsvgNode **result, const RsvgPropSrc prop
                       const RsvgDefs *defs, const RsvgNodeType node_type)
 {
     RsvgNode *ref;
+    const char *end;
 
     if (rsvg_keyword_cmp (str, "none", prop_src)) {
         *result = NULL;
         return TRUE;
     }
 
-    if (!_rsvg_parse_funciri (str, &str, &ref, prop_src, defs))
-        return FALSE;
+    ref = _rsvg_parse_funciri (str, &end, prop_src, defs);
 
-    if (ref != NULL && RSVG_NODE_TYPE (ref) != node_type)
+    if (ref == NULL) {
+        if (end == str)
+            return FALSE;
+    } else if (RSVG_NODE_TYPE (ref) != node_type) {
         ref = NULL;
+    }
 
     *result = ref;
     return TRUE;
@@ -829,10 +836,12 @@ rsvg_parse_paint (const char *str, RsvgPaintServer *result,
 {
     RsvgPaintServer ps, ps_ref;
     RsvgNode *ref;
+    const char *end;
     gboolean expect_color = TRUE;
     gboolean has_ref = FALSE;
 
-    if (_rsvg_parse_funciri (str, &str, &ref, prop_src, defs)) {
+    ref = _rsvg_parse_funciri (str, &end, prop_src, defs);
+    if (end != str) {
         expect_color = FALSE;
         if (*str != '\0') {
             expect_color = TRUE;
@@ -1419,7 +1428,7 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         if (rsvg_parse_fill_rule (value, &state->fill_rule, prop_src))
             state->has_fill_rule = TRUE;
     } else if (g_str_equal (name, "filter")) {
-        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+        if (_rsvg_parse_node_ref (value, &state->filter, prop_src,
                                   ctx->priv->defs, RSVG_NODE_TYPE_FILTER))
             ; /* there is no has_filter */
     } else if (g_str_equal (name, "flood-color")) {
@@ -1466,19 +1475,19 @@ rsvg_parse_prop (const RsvgHandle *ctx,
     } else if (g_str_equal (name, "marker")) {
         /* TODO */
     } else if (g_str_equal (name, "marker-start")) {
-        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+        if (_rsvg_parse_node_ref (value, &state->marker_start, prop_src,
                                   ctx->priv->defs, RSVG_NODE_TYPE_MARKER))
             state->has_startMarker = TRUE;
     } else if (g_str_equal (name, "marker-mid")) {
-        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+        if (_rsvg_parse_node_ref (value, &state->marker_mid, prop_src,
                                   ctx->priv->defs, RSVG_NODE_TYPE_MARKER))
             state->has_middleMarker = TRUE;
     } else if (g_str_equal (name, "marker-end")) {
-        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+        if (_rsvg_parse_node_ref (value, &state->marker_end, prop_src,
                                   ctx->priv->defs, RSVG_NODE_TYPE_MARKER))
             state->has_endMarker = TRUE;
     } else if (g_str_equal (name, "mask")) {
-        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+        if (_rsvg_parse_node_ref (value, &state->mask, prop_src,
                                   ctx->priv->defs, RSVG_NODE_TYPE_MASK))
             ; /* there is no has_mask */
     } else if (g_str_equal (name, "opacity")) {
