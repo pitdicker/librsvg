@@ -2865,8 +2865,14 @@ rsvg_filter_primitive_flood_render (RsvgFilterPrimitive * self, RsvgFilterContex
     char pixcolour[4];
     RsvgFilterPrimitiveOutput out;
 
-    guint32 colour = self->super.state->flood_color;
-    guint8 opacity = self->super.state->flood_opacity;
+    guint32 colour;
+    guint8 opacity;
+
+    if (self->super.state->flood_color.current_color)
+        colour = self->super.state->color;
+    else
+        colour = self->super.state->flood_color.color;
+    opacity = self->super.state->flood_opacity;
 
     boundarys = rsvg_filter_primitive_get_bounds (self, ctx);
 
@@ -4211,7 +4217,6 @@ struct _RsvgFilterPrimitiveDiffuseLighting {
     gdouble dx, dy;
     double diffuseConstant;
     double surfaceScale;
-    guint32 lightingcolour;
 };
 
 static void
@@ -4227,6 +4232,7 @@ rsvg_filter_primitive_diffuse_lighting_render (RsvgFilterPrimitive * self, RsvgF
     cairo_matrix_t iaffine;
     RsvgNodeLightSource *source = NULL;
     RsvgIRect boundarys;
+    guint32 lighting_color;
 
     guchar *in_pixels;
     guchar *output_pixels;
@@ -4276,9 +4282,14 @@ rsvg_filter_primitive_diffuse_lighting_render (RsvgFilterPrimitive * self, RsvgF
 
     output_pixels = cairo_image_surface_get_data (output);
 
-    colour.x = ((guchar *) (&upself->lightingcolour))[2] / 255.0;
-    colour.y = ((guchar *) (&upself->lightingcolour))[1] / 255.0;
-    colour.z = ((guchar *) (&upself->lightingcolour))[0] / 255.0;
+    if (self->super.state->lighting_color.current_color)
+        lighting_color = self->super.state->color;
+    else
+        lighting_color = self->super.state->lighting_color.color;
+
+    colour.x = ((lighting_color >> 16) & 0xff) / 255.0; /* red */
+    colour.y = ((lighting_color >>  8) & 0xff) / 255.0; /* green */
+    colour.z = ((lighting_color >>  0) & 0xff) / 255.0; /* blue */
 
     surfaceScale = upself->surfaceScale / 255.0;
 
@@ -4357,8 +4368,6 @@ rsvg_filter_primitive_diffuse_lighting_set_atts (RsvgNode * self, RsvgHandle * c
             _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "kernelUnitLength")))
             rsvg_css_parse_number_optional_number (value, &filter->dx, &filter->dy);
-        if ((value = rsvg_property_bag_lookup (atts, "lighting-color")))
-            filter->lightingcolour = rsvg_css_parse_color (value, 0);
         if ((value = rsvg_property_bag_lookup (atts, "diffuseConstant")))
             filter->diffuseConstant = g_ascii_strtod (value, NULL);
         if ((value = rsvg_property_bag_lookup (atts, "surfaceScale")))
@@ -4388,7 +4397,6 @@ rsvg_new_filter_primitive_diffuse_lighting (void)
     filter->diffuseConstant = 1;
     filter->dx = 1;
     filter->dy = 1;
-    filter->lightingcolour = 0xFFFFFFFF;
     filter->super.render = &rsvg_filter_primitive_diffuse_lighting_render;
     filter->super.super.free = &rsvg_filter_primitive_diffuse_lighting_free;
     filter->super.super.set_atts = rsvg_filter_primitive_diffuse_lighting_set_atts;
@@ -4405,7 +4413,6 @@ struct _RsvgFilterPrimitiveSpecularLighting {
     double specularConstant;
     double specularExponent;
     double surfaceScale;
-    guint32 lightingcolour;
 };
 
 static void
@@ -4420,6 +4427,7 @@ rsvg_filter_primitive_specular_lighting_render (RsvgFilterPrimitive * self, Rsvg
     cairo_matrix_t iaffine;
     RsvgIRect boundarys;
     RsvgNodeLightSource *source = NULL;
+    guint32 lighting_color;
 
     guchar *in_pixels;
     guchar *output_pixels;
@@ -4468,9 +4476,14 @@ rsvg_filter_primitive_specular_lighting_render (RsvgFilterPrimitive * self, Rsvg
 
     output_pixels = cairo_image_surface_get_data (output);
 
-    colour.x = ((guchar *) (&upself->lightingcolour))[2] / 255.0;
-    colour.y = ((guchar *) (&upself->lightingcolour))[1] / 255.0;
-    colour.z = ((guchar *) (&upself->lightingcolour))[0] / 255.0;
+    if (self->super.state->lighting_color.current_color)
+        lighting_color = self->super.state->color;
+    else
+        lighting_color = self->super.state->lighting_color.color;
+
+    colour.x = ((lighting_color >> 16) & 0xff) / 255.0; /* red */
+    colour.y = ((lighting_color >>  8) & 0xff) / 255.0; /* green */
+    colour.z = ((lighting_color >>  0) & 0xff) / 255.0; /* blue */
 
     surfaceScale = upself->surfaceScale / 255.0;
 
@@ -4551,8 +4564,6 @@ rsvg_filter_primitive_specular_lighting_set_atts (RsvgNode * self, RsvgHandle * 
             _rsvg_parse_prop_length (value, &filter->super.width, SVG_ATTRIBUTE);
         if ((value = rsvg_property_bag_lookup (atts, "height")))
             _rsvg_parse_prop_length (value, &filter->super.height, SVG_ATTRIBUTE);
-        if ((value = rsvg_property_bag_lookup (atts, "lighting-color")))
-            filter->lightingcolour = rsvg_css_parse_color (value, 0);
         if ((value = rsvg_property_bag_lookup (atts, "specularConstant")))
             filter->specularConstant = g_ascii_strtod (value, NULL);
         if ((value = rsvg_property_bag_lookup (atts, "specularExponent")))
@@ -4584,7 +4595,6 @@ rsvg_new_filter_primitive_specular_lighting (void)
     filter->surfaceScale = 1;
     filter->specularConstant = 1;
     filter->specularExponent = 1;
-    filter->lightingcolour = 0xFFFFFFFF;
     filter->super.render = &rsvg_filter_primitive_specular_lighting_render;
     filter->super.super.free = &rsvg_filter_primitive_specular_lighting_free;
     filter->super.super.set_atts = rsvg_filter_primitive_specular_lighting_set_atts;

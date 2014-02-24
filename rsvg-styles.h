@@ -79,6 +79,11 @@ enum {
     TEXT_RENDERING_GEOMETRIC_PRECISION = CAIRO_ANTIALIAS_DEFAULT
 };
 
+typedef struct {
+    guint32 color;
+    guint32 current_color;
+} RsvgColor;
+
 enum {
     RSVG_PROP_INITIAL        = 0x00,
     RSVG_PROP_EXPLICITLY_SET = 0x01,
@@ -101,7 +106,7 @@ struct _RsvgState {
     guint8             fill_opacity;        /* 0..255 */
     cairo_fill_rule_t  fill_rule;
     RsvgNode          *filter;
-    guint32            flood_color;
+    RsvgColor          flood_color;
     guint8             flood_opacity;
     char              *font_family;
     RsvgLength         font_size;
@@ -110,6 +115,7 @@ struct _RsvgState {
     PangoVariant       font_variant;
     PangoWeight        font_weight;
     RsvgLength         letter_spacing;
+    RsvgColor          lighting_color;
     RsvgNode          *marker_start;
     RsvgNode          *marker_mid;
     RsvgNode          *marker_end;
@@ -117,7 +123,7 @@ struct _RsvgState {
     guint8             opacity;             /* 0..255 */
     gboolean           overflow;
     cairo_antialias_t  shape_rendering;
-    guint32            stop_color;          /* rgb */
+    RsvgColor          stop_color;
     guint8             stop_opacity;        /* 0..255 */
     RsvgPaintServer    stroke;
     RsvgLengthList     stroke_dasharray;

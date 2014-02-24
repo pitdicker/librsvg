@@ -767,6 +767,29 @@ _rsvg_parse_opacity (const char *str, guint8 *result, const RsvgPropSrc prop_src
 }
 
 static gboolean
+_rsvg_parse_color (const char *str, RsvgColor *result, const RsvgPropSrc prop_src)
+{
+    guint32 argb;
+    const char *end;
+
+    if (rsvg_keyword_cmp (str, "currentColor", prop_src)) {
+        result->color = 0xff000000; /* note: is never used */
+        result->current_color = TRUE;
+        return TRUE;
+    }
+
+    argb = _rsvg_parse_raw_color (str, &end);
+    if (str == end || *end != '\0')
+        return FALSE;
+
+    /* TODO: parse icccolor */
+
+    result->color = argb;
+    result->current_color = FALSE;
+    return TRUE;
+}
+
+static gboolean
 _rsvg_parse_node_ref (const char *str, RsvgNode **result, const RsvgPropSrc prop_src,
                       const RsvgDefs *defs, const RsvgNodeType node_type)
 {
@@ -796,16 +819,16 @@ _rsvg_parse_node_ref (const char *str, RsvgNode **result, const RsvgPropSrc prop
 /* Parsers for presentation attributes */
 
 static gboolean
-rsvg_parse_color (const char *str, guint32 *result, const RsvgPropSrc prop_src)
+rsvg_parse_current_color (const char *str, guint32 *result, const RsvgPropSrc prop_src)
 {
-    double value;
+    guint32 argb;
     const char *end;
 
-    value = _rsvg_parse_raw_color (str, &end);
+    argb = _rsvg_parse_raw_color (str, &end);
     if (str == end || *end != '\0')
         return FALSE;
 
-    *result = value;
+    *result = argb;
     return TRUE;
 }
 
@@ -871,7 +894,7 @@ rsvg_parse_paint (const char *str, RsvgPaintServer *result,
             ps.type = RSVG_PAINT_SERVER_NONE;
         } else if (rsvg_keyword_cmp (str, "currentColor", prop_src)) {
             ps.type = RSVG_PAINT_SERVER_CURRENT_COLOR;
-        } else if (rsvg_parse_color (str, &ps.core.color, CSS_VALUE)) {
+        } else if (rsvg_parse_current_color (str, &ps.core.color, CSS_VALUE)) {
             ps.type = RSVG_PAINT_SERVER_SOLID;
         } else {
             return FALSE;
@@ -1388,7 +1411,7 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         if (rsvg_parse_fill_rule (value, &state->clip_rule, prop_src))
             state->has_clip_rule = TRUE;
     } else if (g_str_equal (name, "color")) {
-        if (rsvg_parse_color (value, &state->color, prop_src))
+        if (rsvg_parse_current_color (value, &state->color, prop_src))
             state->has_current_color = TRUE;
     } else if (g_str_equal (name, "color-interpolation")) {
         /* TODO */
@@ -1432,8 +1455,8 @@ rsvg_parse_prop (const RsvgHandle *ctx,
                                   ctx->priv->defs, RSVG_NODE_TYPE_FILTER))
             ; /* there is no has_filter */
     } else if (g_str_equal (name, "flood-color")) {
-        /* TODO */
-        state->flood_color = rsvg_css_parse_color (value, &state->has_flood_color);
+        if (_rsvg_parse_color (value, &state->flood_color, prop_src))
+            state->has_flood_color = TRUE;
     } else if (g_str_equal (name, "flood-opacity")) {
         if (_rsvg_parse_opacity (value, &state->flood_opacity, prop_src))
             state->has_flood_opacity = TRUE;
@@ -1471,7 +1494,8 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         if (_rsvg_parse_prop_length (value, &state->letter_spacing, prop_src))
             state->has_letter_spacing = TRUE;
     } else if (g_str_equal (name, "lighting-color")) {
-        /* TODO */
+        if (_rsvg_parse_color (value, &state->lighting_color, prop_src))
+            ; /* there is no has_lighting_color */
     } else if (g_str_equal (name, "marker")) {
         /* TODO */
     } else if (g_str_equal (name, "marker-start")) {
@@ -1502,8 +1526,8 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         if (rsvg_parse_shape_rendering (value, &state->shape_rendering, prop_src))
             state->has_shape_rendering_type = TRUE;
     } else if (g_str_equal (name, "stop-color")) {
-        /* TODO */
-        state->stop_color = rsvg_css_parse_color (value, &state->has_stop_color);
+        if (_rsvg_parse_color (value, &state->stop_color, prop_src))
+            state->has_stop_color = TRUE;
     } else if (g_str_equal (name, "stop-opacity")) {
         if (_rsvg_parse_opacity (value, &state->stop_opacity, prop_src))
             state->has_stop_opacity = TRUE;

@@ -82,7 +82,7 @@ rsvg_state_init (RsvgState *state)
     state->fill_opacity      = 0xff;
     state->fill_rule         = CAIRO_FILL_RULE_WINDING;
     state->filter            = NULL;
-    state->flood_color       = 0xff000000; /* black */
+    state->flood_color       = (RsvgColor) {0xff000000, FALSE}; /* black */
     state->flood_opacity     = 0xff;
     state->font_family       = g_strdup (RSVG_DEFAULT_FONT);
     state->font_size         = (RsvgLength) {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX};
@@ -91,6 +91,7 @@ rsvg_state_init (RsvgState *state)
     state->font_variant      = PANGO_VARIANT_NORMAL;
     state->font_weight       = PANGO_WEIGHT_NORMAL;
     state->letter_spacing    = (RsvgLength) {0.0, RSVG_UNIT_PX};
+    state->lighting_color    = (RsvgColor) {0xffffffff, FALSE}; /* white */
     state->marker_start      = NULL;
     state->marker_mid        = NULL;
     state->marker_end        = NULL;
@@ -98,7 +99,7 @@ rsvg_state_init (RsvgState *state)
     state->opacity           = 0xff;
     state->overflow          = FALSE;
     state->shape_rendering   = SHAPE_RENDERING_AUTO;
-    state->stop_color        = 0xff000000; /* black */
+    state->stop_color        = (RsvgColor) {0xff000000, FALSE}; /* black */
     state->stop_opacity      = 0xff;
     state->stroke            = (RsvgPaintServer) {.type = RSVG_PAINT_SERVER_NONE};
     state->stroke_dasharray  = (RsvgLengthList) {0, NULL};
@@ -404,6 +405,8 @@ rsvg_parse_presentation_attr (const RsvgHandle * ctx,
     rsvg_lookup_parse_presentation_attr (ctx, state, "font-style", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "font-variant", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "font-weight", atts);
+    rsvg_lookup_parse_presentation_attr (ctx, state, "letter-spacing", atts);
+    rsvg_lookup_parse_presentation_attr (ctx, state, "lighting-color", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "marker-end", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "mask", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "marker-mid", atts);
@@ -424,7 +427,6 @@ rsvg_parse_presentation_attr (const RsvgHandle * ctx,
     rsvg_lookup_parse_presentation_attr (ctx, state, "text-anchor", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "text-decoration", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "unicode-bidi", atts);
-    rsvg_lookup_parse_presentation_attr (ctx, state, "letter-spacing", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "visibility", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "writing-mode", atts);
     rsvg_lookup_parse_presentation_attr (ctx, state, "xml:lang", atts);
