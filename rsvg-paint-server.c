@@ -133,8 +133,6 @@ rsvg_linear_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
             if (rsvg_parse_transform (&grad->affine, value))
                 grad->hastransform = TRUE;
         }
-        if ((value = rsvg_property_bag_lookup (atts, "color")))
-            grad->current_color = rsvg_css_parse_color (value, 0);
         if ((value = rsvg_property_bag_lookup (atts, "gradientUnits"))) {
             if (!strcmp (value, "userSpaceOnUse"))
                 grad->obj_bbox = FALSE;
@@ -154,7 +152,6 @@ rsvg_new_linear_gradient (void)
     grad = g_new (RsvgLinearGradient, 1);
     _rsvg_node_init (&grad->super, RSVG_NODE_TYPE_LINEAR_GRADIENT);
     cairo_matrix_init_identity (&grad->affine);
-    grad->has_current_color = FALSE;
     grad->x1 = grad->y1 = grad->y2 = (RsvgLength) {0.0, RSVG_UNIT_NUMBER}; /* TODO: should be 0.0% */
     grad->x2 = (RsvgLength) {1.0, RSVG_UNIT_NUMBER}; /* TODO: should be 100.0% */
     grad->fallback = NULL;
@@ -207,9 +204,6 @@ rsvg_radial_gradient_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBa
             if (rsvg_parse_transform (&grad->affine, value))
                 grad->hastransform = TRUE;
         }
-        if ((value = rsvg_property_bag_lookup (atts, "color"))) {
-            grad->current_color = rsvg_css_parse_color (value, 0);
-        }
         if ((value = rsvg_property_bag_lookup (atts, "spreadMethod"))) {
             if (!strcmp (value, "pad"))
                 grad->spread = CAIRO_EXTEND_PAD;
@@ -237,7 +231,6 @@ rsvg_new_radial_gradient (void)
     RsvgRadialGradient *grad = g_new (RsvgRadialGradient, 1);
     _rsvg_node_init (&grad->super, RSVG_NODE_TYPE_RADIAL_GRADIENT);
     cairo_matrix_init_identity (&grad->affine);
-    grad->has_current_color = FALSE;
     grad->obj_bbox = TRUE;
     grad->spread = CAIRO_EXTEND_PAD;
     grad->fallback = NULL;

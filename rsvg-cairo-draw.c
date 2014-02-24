@@ -81,8 +81,7 @@ _set_source_rsvg_linear_gradient (RsvgDrawingCtx * ctx,
     linear = &statlinear;
     rsvg_linear_gradient_fix_fallback (linear);
 
-    if (linear->has_current_color)
-        current_color_rgb = linear->current_color;
+    current_color_rgb = ((RsvgNode *) linear)->state->color;
 
     if (linear->obj_bbox)
         _rsvg_push_view_box (ctx, 1., 1.);
@@ -125,8 +124,7 @@ _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
     radial = &statradial;
     rsvg_radial_gradient_fix_fallback (radial);
 
-    if (radial->has_current_color)
-        current_color_rgb = radial->current_color;
+   current_color_rgb = ((RsvgNode *) radial)->state->color;
 
     if (radial->obj_bbox)
         _rsvg_push_view_box (ctx, 1., 1.);
