@@ -112,6 +112,8 @@ dist_man_MANS = rsvg-convert.1
 
 rsvg_convert_SOURCES = \
 	rsvg-convert.c \
+	rsvg-parse-props.c \
+	rsvg-parse-props.h \
 	rsvg-size-callback.c \
 	rsvg-size-callback.h \
 	$(NULL)

@@ -220,7 +220,7 @@ invalid_value:
     return 0x00;
 }
 
-static guint32
+guint32
 _rsvg_parse_raw_color (const char *str, const char **end)
 {
     guint32 value;

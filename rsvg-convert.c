@@ -35,10 +35,9 @@
 #include <string.h>
 #include <locale.h>
 
-#include "rsvg-css.h"
 #include "rsvg.h"
-#include "rsvg-private.h"
-#include "rsvg-size-callback.h"
+#include "rsvg-size-callback.h" /* to make use of _rsvg_size_callback */
+#include "rsvg-parse-props.h"   /* to make use of rsvg_parse_raw_color */
 
 #ifdef CAIRO_HAS_PS_SURFACE
 #include <cairo-ps.h>
@@ -327,7 +326,10 @@ main (int argc, char **argv)
 
         // Set background color
         if (background_color_str && g_ascii_strcasecmp(background_color_str, "none") != 0) {
-            background_color = rsvg_css_parse_color(background_color_str, FALSE);
+            const char *end;
+            background_color = _rsvg_parse_raw_color (background_color_str, &end);
+            if (end == background_color_str || *end != '\0')
+                background_color = 0;
 
             cairo_set_source_rgb (
                 cr, 

@@ -49,7 +49,9 @@ RsvgLength _rsvg_parse_length (const char *str,
                                const char **end,
                                const RsvgPropSrc prop_src);
 G_GNUC_INTERNAL
-gboolean _rsvg_parse_list_next_item (const char *str, const char **end);
+gboolean   _rsvg_parse_list_next_item (const char *str, const char **end);
+G_GNUC_INTERNAL
+guint32    _rsvg_parse_raw_color (const char *str, const char **end);
 
 /* functions for parsing properties that can only contain a basic data type */
 G_GNUC_INTERNAL
