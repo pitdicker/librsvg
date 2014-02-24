@@ -146,8 +146,6 @@ struct _RsvgState {
     /* ??? */
     gboolean           cond_true;
 
-    GHashTable *styles;
-
     gboolean has_fill_server;
     gboolean has_fill_opacity;
     gboolean has_fill_rule;

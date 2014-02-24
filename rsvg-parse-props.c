@@ -1362,18 +1362,8 @@ rsvg_parse_prop (const RsvgHandle *ctx,
                  const gboolean important,
                  const RsvgPropSrc prop_src)
 {
-    StyleValueData *data;
-
-    data = g_hash_table_lookup (state->styles, name);
-    if (data && data->important && !important)
-        return;
-
     if (name == NULL || value == NULL)
         return;
-
-    g_hash_table_insert (state->styles,
-                         (gpointer) g_strdup (name),
-                         (gpointer) style_value_data_new (value, important));
 
     if (g_str_equal (name, "alignment-baseline")) {
         /* TODO */

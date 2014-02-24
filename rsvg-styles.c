@@ -126,9 +126,6 @@ rsvg_state_init (RsvgState *state)
 
     /* ??? */
     state->cond_true         = TRUE;
-
-    state->styles = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                           g_free, (GDestroyNotify) style_value_data_free);
 }
 
 void
@@ -165,8 +162,6 @@ rsvg_state_clone (RsvgState *dst, const RsvgState *src)
         for (i = 0; i < src->stroke_dasharray.n_items; i++)
             dst->stroke_dasharray.items[i] = src->stroke_dasharray.items[i];
     }
-
-    dst->styles = g_hash_table_ref (src->styles);
 }
 
 /*
@@ -372,7 +367,6 @@ rsvg_state_finalize (const RsvgState *state)
     g_free (state->font_family);
     g_free (state->lang);
     g_free (state->stroke_dasharray.items);
-    g_hash_table_unref (state->styles);
 }
 
 static void
