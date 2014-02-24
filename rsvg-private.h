@@ -51,7 +51,6 @@ typedef GHashTable RsvgPropertyBag;
 typedef struct _RsvgState RsvgState;
 typedef struct _RsvgDefs RsvgDefs;
 typedef struct _RsvgNode RsvgNode;
-typedef struct _RsvgFilter RsvgFilter;
 typedef struct _RsvgNodeChars RsvgNodeChars;
 typedef struct _RSVGPathSegm RSVGPathSegm;
 

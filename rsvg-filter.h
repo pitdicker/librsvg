@@ -36,6 +36,7 @@ typedef struct  {
 } RsvgIRect;
 
 typedef RsvgCoordUnits RsvgFilterUnits;
+typedef struct _RsvgFilter RsvgFilter;
 
 struct _RsvgFilter {
     RsvgNode super;

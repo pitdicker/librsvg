@@ -743,7 +743,7 @@ rsvg_cairo_push_early_clips (RsvgDrawingCtx * ctx)
     cairo_save (render->cr);
     if (rsvg_current_state (ctx)->clip_path)
         if (((RsvgClipPath *) rsvg_current_state (ctx)->clip_path)->units == userSpaceOnUse)
-            rsvg_cairo_clip (ctx, rsvg_current_state (ctx)->clip_path, NULL);
+            rsvg_cairo_clip (ctx, (RsvgClipPath *) rsvg_current_state (ctx)->clip_path, NULL);
 
 }
 
@@ -831,7 +831,7 @@ rsvg_cairo_pop_render_stack (RsvgDrawingCtx * ctx)
         output = render->surfaces_stack->data;
         render->surfaces_stack = g_list_delete_link (render->surfaces_stack, render->surfaces_stack);
 
-        surface = rsvg_filter_render (state->filter, output, ctx, &render->bbox, "2103");
+        surface = rsvg_filter_render ((RsvgFilter *) state->filter, output, ctx, &render->bbox, "2103");
 
         /* Don't destroy the output surface, it's owned by child_cr */
     } else {
@@ -848,12 +848,12 @@ rsvg_cairo_pop_render_stack (RsvgDrawingCtx * ctx)
                               nest ? 0 : render->offset_y);
 
     if (lateclip)
-        rsvg_cairo_clip (ctx, rsvg_current_state (ctx)->clip_path, &render->bbox);
+        rsvg_cairo_clip (ctx, (RsvgClipPath *) rsvg_current_state (ctx)->clip_path, &render->bbox);
 
     cairo_set_operator (render->cr, state->comp_op);
 
     if (state->mask) {
-        rsvg_cairo_generate_mask (render->cr, state->mask, ctx, &render->bbox);
+        rsvg_cairo_generate_mask (render->cr, (RsvgMask *) state->mask, ctx, &render->bbox);
     } else if (state->opacity != 0xFF)
         cairo_paint_with_alpha (render->cr, (double) state->opacity / 255.0);
     else

@@ -576,23 +576,26 @@ _rsvg_parse_list_count_items (const char *str)
     return i;
 }
 
-static char *
-rsvg_get_url_string (const char *str)
-//_rsvg_parse_funciri (const char *str)
+static gboolean
+_rsvg_parse_funciri (const char *str, const char **end, RsvgNode **ref,
+                     const RsvgPropSrc prop_src, const RsvgDefs *defs)
 {
-    /* TODO */
-    if (!strncmp (str, "url(", 4)) {
-        const char *p = str + 4;
-        int ix;
+    char *name;
+    guint len;
 
-        while (g_ascii_isspace (*p))
-            p++;
+    if (!rsvg_keyword_ncmp (str, "url(", prop_src))
+        return FALSE;
 
-        for (ix = 0; p[ix]; ix++)
-            if (p[ix] == ')')
-                return g_strndup (p, ix);
+    for (len = 4; str[len] != ')'; len++) {
+        if (str[len] == '\0')
+            return FALSE;
     }
-    return NULL;
+    name = g_strndup (str + 4, len - 4);
+    *end = str + len + 1;
+
+    *ref = rsvg_defs_lookup (defs, name);
+    g_free (name);
+    return TRUE;
 }
 
 /* ========================================================================== */
@@ -760,6 +763,27 @@ _rsvg_parse_opacity (const char *str, guint8 *result, const RsvgPropSrc prop_src
     return TRUE;
 }
 
+static gboolean
+_rsvg_parse_node_ref (const char *str, RsvgNode **result, const RsvgPropSrc prop_src,
+                      const RsvgDefs *defs, const RsvgNodeType node_type)
+{
+    RsvgNode *ref;
+
+    if (rsvg_keyword_cmp (str, "none", prop_src)) {
+        *result = NULL;
+        return TRUE;
+    }
+
+    if (!_rsvg_parse_funciri (str, &str, &ref, prop_src, defs))
+        return FALSE;
+
+    if (ref != NULL && RSVG_NODE_TYPE (ref) != node_type)
+        ref = NULL;
+
+    *result = ref;
+    return TRUE;
+}
+
 /* ========================================================================== */
 
 /* Parsers for presentation attributes */
@@ -799,54 +823,24 @@ rsvg_parse_direction (const char *str, PangoDirection *result, const RsvgPropSrc
     return TRUE;
 }
 
-static RsvgNode *
-rsvg_parse_clip_path (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_CLIP_PATH)
-            return val;
-    }
-    return NULL;
-}
-
 static gboolean
 rsvg_parse_paint (const char *str, RsvgPaintServer *result,
-                  const RsvgPropSrc prop_src, const RsvgDefs * defs)
+                  const RsvgPropSrc prop_src, const RsvgDefs *defs)
 {
     RsvgPaintServer ps, ps_ref;
-    char *name;
     RsvgNode *ref;
     gboolean expect_color = TRUE;
     gboolean has_ref = FALSE;
-    guint i;
 
-    if (rsvg_keyword_ncmp (str, "url(", prop_src)) {
+    if (_rsvg_parse_funciri (str, &str, &ref, prop_src, defs)) {
         expect_color = FALSE;
-        has_ref = TRUE;
-
-        for (i = 4; str[i] != ')'; i++) {
-            if (str[i] == '\0')
-                return FALSE;
-        }
-        name = g_strndup (str + 4, i - 4);
-        str += i + 1;
-
         if (*str != '\0') {
             expect_color = TRUE;
             while (_rsvg_is_wsp (*str))
                 str++;
         }
 
-        ref = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
+        has_ref = TRUE;
         if (ref == NULL) {
             has_ref = FALSE;
         } else if (RSVG_NODE_TYPE (ref) == RSVG_NODE_TYPE_LINEAR_GRADIENT) {
@@ -882,33 +876,6 @@ rsvg_parse_paint (const char *str, RsvgPaintServer *result,
     else
         return FALSE;
     return TRUE;
-}
-
-/**
- * rsvg_parse_filter:
- * @defs: a pointer to the hash of definitions
- * @str: a string with the name of the filter to be looked up
- *
- * Looks up an allready created filter.
- *
- * Returns: a pointer to the filter that the name refers to, or NULL
- * if none was found
- **/
-static RsvgFilter *
-rsvg_parse_filter (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_FILTER)
-            return (RsvgFilter *) val;
-    }
-    return NULL;
 }
 
 static gboolean
@@ -1089,40 +1056,6 @@ rsvg_parse_font_weight (const char *str, PangoWeight *result, const RsvgPropSrc 
 
     *result = keyword->value;
     return TRUE;
-}
-
-static RsvgNode *
-rsvg_parse_marker (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_MARKER)
-            return val;
-    }
-    return NULL;
-}
-
-static RsvgNode *
-rsvg_parse_mask (const RsvgDefs * defs, const char *str)
-{
-    char *name;
-
-    name = rsvg_get_url_string (str);
-    if (name) {
-        RsvgNode *val;
-        val = rsvg_defs_lookup (defs, name);
-        g_free (name);
-
-        if (val && RSVG_NODE_TYPE (val) == RSVG_NODE_TYPE_MASK)
-            return val;
-    }
-    return NULL;
 }
 
 static gboolean
@@ -1449,8 +1382,9 @@ rsvg_parse_prop (const RsvgHandle *ctx,
     } else if (g_str_equal (name, "clip")) {
         /* TODO */
     } else if (g_str_equal (name, "clip-path")) {
-        /* TODO */
-        state->clip_path = rsvg_parse_clip_path (ctx->priv->defs, value);
+        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+                                  ctx->priv->defs, RSVG_NODE_TYPE_CLIP_PATH))
+            ; /* there is no has_clip_path */
     } else if (g_str_equal (name, "clip-rule")) {
         if (rsvg_parse_fill_rule (value, &state->clip_rule, prop_src))
             state->has_clip_rule = TRUE;
@@ -1495,8 +1429,9 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         if (rsvg_parse_fill_rule (value, &state->fill_rule, prop_src))
             state->has_fill_rule = TRUE;
     } else if (g_str_equal (name, "filter")) {
-        /* TODO */
-        state->filter = rsvg_parse_filter (ctx->priv->defs, value);
+        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+                                  ctx->priv->defs, RSVG_NODE_TYPE_FILTER))
+            ; /* there is no has_filter */
     } else if (g_str_equal (name, "flood-color")) {
         /* TODO */
         state->flood_color = rsvg_css_parse_color (value, &state->has_flood_color);
@@ -1541,20 +1476,21 @@ rsvg_parse_prop (const RsvgHandle *ctx,
     } else if (g_str_equal (name, "marker")) {
         /* TODO */
     } else if (g_str_equal (name, "marker-start")) {
-        /* TODO */
-        state->marker_start = rsvg_parse_marker (ctx->priv->defs, value);
-        state->has_startMarker = TRUE;
+        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+                                  ctx->priv->defs, RSVG_NODE_TYPE_MARKER))
+            state->has_startMarker = TRUE;
     } else if (g_str_equal (name, "marker-mid")) {
-        /* TODO */
-        state->marker_mid = rsvg_parse_marker (ctx->priv->defs, value);
-        state->has_middleMarker = TRUE;
+        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+                                  ctx->priv->defs, RSVG_NODE_TYPE_MARKER))
+            state->has_middleMarker = TRUE;
     } else if (g_str_equal (name, "marker-end")) {
-        /* TODO */
-        state->marker_end = rsvg_parse_marker (ctx->priv->defs, value);
-        state->has_endMarker = TRUE;
+        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+                                  ctx->priv->defs, RSVG_NODE_TYPE_MARKER))
+            state->has_endMarker = TRUE;
     } else if (g_str_equal (name, "mask")) {
-        /* TODO */
-        state->mask = rsvg_parse_mask (ctx->priv->defs, value);
+        if (_rsvg_parse_node_ref (value, &state->clip_path, prop_src,
+                                  ctx->priv->defs, RSVG_NODE_TYPE_MASK))
+            ; /* there is no has_mask */
     } else if (g_str_equal (name, "opacity")) {
         if (_rsvg_parse_opacity (value, &state->opacity, prop_src))
             ; /* there is no has_opacity */
@@ -1582,7 +1518,7 @@ rsvg_parse_prop (const RsvgHandle *ctx,
         if (_rsvg_parse_prop_length (value, &state->stroke_dashoffset, prop_src))
             state->has_dashoffset = TRUE;
     } else if (g_str_equal (name, "stroke-linecap")) {
-       if (rsvg_parse_stroke_linecap (value, &state->stroke_linecap, prop_src))
+        if (rsvg_parse_stroke_linecap (value, &state->stroke_linecap, prop_src))
             state->has_cap = TRUE;
     } else if (g_str_equal (name, "stroke-linejoin")) {
         if (rsvg_parse_stroke_linejoin (value, &state->stroke_linejoin, prop_src))

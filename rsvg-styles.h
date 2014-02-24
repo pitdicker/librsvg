@@ -92,7 +92,7 @@ struct _RsvgState {
     cairo_matrix_t     personal_affine;
 
     /* presentation attributes */
-    void              *clip_path;
+    RsvgNode          *clip_path;
     cairo_fill_rule_t  clip_rule;
     guint32            color;
     PangoDirection     direction;
@@ -100,7 +100,7 @@ struct _RsvgState {
     RsvgPaintServer    fill;
     guint8             fill_opacity;        /* 0..255 */
     cairo_fill_rule_t  fill_rule;
-    RsvgFilter        *filter;
+    RsvgNode          *filter;
     guint32            flood_color;
     guint8             flood_opacity;
     char              *font_family;
@@ -113,7 +113,7 @@ struct _RsvgState {
     RsvgNode          *marker_start;
     RsvgNode          *marker_mid;
     RsvgNode          *marker_end;
-    void              *mask;
+    RsvgNode          *mask;
     guint8             opacity;             /* 0..255 */
     gboolean           overflow;
     cairo_antialias_t  shape_rendering;
