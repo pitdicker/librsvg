@@ -157,7 +157,7 @@ _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
 }
 
 static void
-_set_source_rsvg_solid_colour (const RsvgDrawingCtx *ctx,
+_set_source_rsvg_solid_color (const RsvgDrawingCtx *ctx,
                                const guint32 argb, const guint8 opacity)
 {
     RsvgCairoRender *render = RSVG_CAIRO_RENDER (ctx->render);
@@ -324,17 +324,17 @@ static void
 _set_source_rsvg_paint_server (RsvgDrawingCtx * ctx,
                                guint32 current_color_rgb,
                                RsvgPaintServer ps,
-                               guint8 opacity, RsvgBbox bbox, guint32 current_colour)
+                               guint8 opacity, RsvgBbox bbox, guint32 current_color)
 {
     switch (ps.type) {
     case RSVG_PAINT_SERVER_NONE:
         g_assert (ps.type != RSVG_PAINT_SERVER_NONE);
         break;
     case RSVG_PAINT_SERVER_SOLID:
-        _set_source_rsvg_solid_colour (ctx, ps.core.color, opacity);
+        _set_source_rsvg_solid_color (ctx, ps.core.color, opacity);
         break;
     case RSVG_PAINT_SERVER_CURRENT_COLOR:
-        _set_source_rsvg_solid_colour (ctx, current_colour, opacity);
+        _set_source_rsvg_solid_color (ctx, current_color, opacity);
         break;
     case RSVG_PAINT_SERVER_LIN_GRAD:
         _set_source_rsvg_linear_gradient (ctx, ps.core.lingrad, current_color_rgb, opacity, bbox);
