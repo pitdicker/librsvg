@@ -865,13 +865,6 @@ rsvg_parse_paint (const char *str, RsvgPaintServer *result,
 
     ref = _rsvg_parse_funciri (str, &end, prop_src, defs);
     if (end != str) {
-        expect_color = FALSE;
-        if (*str != '\0') {
-            expect_color = TRUE;
-            while (_rsvg_is_wsp (*str))
-                str++;
-        }
-
         has_ref = TRUE;
         if (ref == NULL) {
             has_ref = FALSE;
@@ -886,6 +879,15 @@ rsvg_parse_paint (const char *str, RsvgPaintServer *result,
             ps_ref.core.pattern = (RsvgPattern *) ref;
         } else {
             has_ref = FALSE;
+        }
+
+        /* prepare for a fallback color */
+        expect_color = FALSE;
+        if (*end != '\0') {
+            str = end;
+            expect_color = TRUE;
+            while (_rsvg_is_wsp (*str))
+                str++;
         }
     }
 
