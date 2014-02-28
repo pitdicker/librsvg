@@ -40,6 +40,7 @@
 static void
 rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
 {
+    const char *klazz = NULL, *id = NULL;
     const char *value, *end;
     RsvgGradientStop *stop;
     RsvgState state;
@@ -64,19 +65,15 @@ rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
             }
             stop->offset = CLAMP (stop->offset, 0., 1.);
         }
-        if ((value = rsvg_property_bag_lookup (atts, "style")))
-            rsvg_parse_style (ctx, self->state, value);
+        if ((value = rsvg_property_bag_lookup (atts, "class")))
+            klazz = value;
+        if ((value = rsvg_property_bag_lookup (atts, "id"))) {
+            id = value;
+            rsvg_defs_register_name (ctx->priv->defs, value, self);
+        }
 
-        rsvg_parse_presentation_attr (ctx, self->state, atts);
+        rsvg_set_presentation_props (ctx, self->state, "stop", klazz, id, atts);
     }
-    self->parent = ctx->priv->currentnode;
-    rsvg_state_init (&state);
-    rsvg_state_reconstruct (&state, self);
-    if (state.stop_color.current_color)
-        state.stop_color.color = state.color;
-    stop->rgba = (state.stop_color.color << 8) | state.stop_opacity;
-    rsvg_state_finalize (&state);
-    /* TODO: who frees state? */
 }
 
 RsvgNode *
@@ -85,8 +82,7 @@ rsvg_new_stop (void)
     RsvgGradientStop *stop = g_new (RsvgGradientStop, 1);
     _rsvg_node_init (&stop->super, RSVG_NODE_TYPE_STOP);
     stop->super.set_atts = rsvg_stop_set_atts;
-    stop->offset = 0;
-    stop->rgba = 0;
+    stop->offset = 0.0;
     return &stop->super;
 }
 

@@ -46,7 +46,6 @@ typedef struct _RsvgPSCtx RsvgPSCtx;
 struct _RsvgGradientStop {
     RsvgNode super;
     double offset;
-    guint32 rgba;
 };
 
 struct _RsvgLinearGradient {

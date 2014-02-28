@@ -51,19 +51,26 @@ _pattern_add_rsvg_color_stops (cairo_pattern_t * pattern,
     gsize i;
     RsvgGradientStop *stop;
     RsvgNode *node;
-    guint32 rgba;
+    guint32 argb;
+    double r, g, b, a;
 
     for (i = 0; i < stops->len; i++) {
         node = (RsvgNode *) g_ptr_array_index (stops, i);
         if (RSVG_NODE_TYPE (node) != RSVG_NODE_TYPE_STOP)
             continue;
+
+        if (node->state->stop_color.current_color)
+            argb = current_color_rgb; /* TODO: is this the correct current color? */
+        else
+            argb = node->state->stop_color.color;
+
+        r = ((argb >> 16) & 0xff) / 255.0;
+        g = ((argb >>  8) & 0xff) / 255.0;
+        b = ((argb >>  0) & 0xff) / 255.0;
+        a =  (argb >> 24) / 255.0 * node->state->stop_opacity / 255.0 * opacity / 255.0;
+
         stop = (RsvgGradientStop *) node;
-        rgba = stop->rgba;
-        cairo_pattern_add_color_stop_rgba (pattern, stop->offset,
-                                           ((rgba >> 24) & 0xff) / 255.0,
-                                           ((rgba >> 16) & 0xff) / 255.0,
-                                           ((rgba >> 8) & 0xff) / 255.0,
-                                           (((rgba >> 0) & 0xff) * opacity) / 255.0 / 255.0);
+        cairo_pattern_add_color_stop_rgba (pattern, stop->offset, r, g, b, a);
     }
 }
 
