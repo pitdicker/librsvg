@@ -455,28 +455,24 @@ _rsvg_node_poly_build_path (const char *data,
 
     rsvg_path_builder_init (&path, 16);
 
-    while (*data != 0) {
+    while (*data != '\0') {
         switch (*data) {
         case '.':
             /* '.' must be followed by a number */
-            if (!(data[1] >= 0 && data[1] <= '9'))
+            if (!(data[1] >= '0' && data[1] <= '9'))
                 goto exitloop;
             /* fallthrough */
         case '+': case '-':
             /* '+' or '-' must be followed by a digit,
                or by a '.' that is followed by a digit */
-            if (!((data[1] >= 0 && data[1] <= '9') ||
-                  (data[1] == '.' && !(data[2] >= 0 && data[2] <= '9'))))
+            if (!((data[1] >= '0' && data[1] <= '9') ||
+                  (data[1] == '.' && !(data[2] >= '0' && data[2] <= '9'))))
                 goto exitloop;
             /* fallthrough */
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
             params[param] = g_ascii_strtod(data, (gchar **) &data);
             param++;
-
-            /* strtod also parses infinity and nan, which are not valid */
-            if (!isfinite (params[param]))
-                goto exitloop;
 
             if (param == 2) {
                 if (first_cmd) {
@@ -753,18 +749,18 @@ _rsvg_node_path_build_path (const char *data)
     ctx.param = 0;
     ctx.x = ctx.y = 0.;
 
-    while (*data != 0) {
+    while (*data != '\0') {
         switch (*data) {
         case '.':
             /* '.' must be followed by a number */
-            if (!(data[1] >= 0 && data[1] <= '9'))
+            if (!(data[1] >= '0' && data[1] <= '9'))
                 goto exitloop;
             /* fallthrough */
         case '+': case '-':
             /* '+' or '-' must be followed by a digit,
                or by a '.' that is followed by a digit */
-            if (!((data[1] >= 0 && data[1] <= '9') ||
-                  (data[1] == '.' && !(data[2] >= 0 && data[2] <= '9'))))
+            if (!((data[1] >= '0' && data[1] <= '9') ||
+                  (data[1] == '.' && !(data[2] >= '0' && data[2] <= '9'))))
                 goto exitloop;
             /* fallthrough */
         case '0': case '1': case '2': case '3': case '4':
@@ -776,9 +772,6 @@ _rsvg_node_path_build_path (const char *data)
             } else {
                 ctx.params[ctx.param] = g_ascii_strtod (data, (gchar **) &data);
                 data -= 1;
-                /* strtod also parses infinity and nan, which are not valid */
-                if (!isfinite (ctx.params[ctx.param]))
-                    goto exitloop;
             }
             ctx.param++;
             in_cmd = TRUE;
