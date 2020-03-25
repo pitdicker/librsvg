@@ -79,10 +79,20 @@ enum {
     TEXT_RENDERING_GEOMETRIC_PRECISION = CAIRO_ANTIALIAS_DEFAULT
 };
 
-typedef struct {
-    guint32 color;
-    guint32 current_color;
-} RsvgColor;
+typedef union {
+    struct {
+        enum _RsvgPaintType {
+            /* TODO: explain */
+            NONE = 0xffffffff,
+            CURRENT_COLOR = 0xfffffffe,
+            LINEAR_GRADIENT = 0xfffffffd,
+            RADIAL_GRADIENT = 0xfffffffc,
+            PATTERN = 0xfffffffb
+        } type;
+        RsvgNode *server;
+    } paint;
+    RsvgColor color;
+} RsvgPaint;
 
 enum {
     RSVG_PROP_INITIAL        = 0x00,
@@ -99,15 +109,15 @@ struct _RsvgState {
     /* presentation attributes */
     RsvgNode          *clip_path;
     cairo_fill_rule_t  clip_rule;
-    guint32            color;
+    RsvgColor          color;
     PangoDirection     direction;
     RsvgEnableBackgroundType enable_background;
-    RsvgPaintServer    fill;
-    guint8             fill_opacity;        /* 0..255 */
+    RsvgPaint          fill;
+    float              fill_opacity;
     cairo_fill_rule_t  fill_rule;
     RsvgNode          *filter;
-    RsvgColor          flood_color;
-    guint8             flood_opacity;
+    RsvgPaint          flood_color;
+    float              flood_opacity;
     char              *font_family;
     RsvgLength         font_size;
     PangoStretch       font_stretch;
@@ -115,23 +125,23 @@ struct _RsvgState {
     PangoVariant       font_variant;
     PangoWeight        font_weight;
     RsvgLength         letter_spacing;
-    RsvgColor          lighting_color;
+    RsvgPaint          lighting_color;
     RsvgNode          *marker_start;
     RsvgNode          *marker_mid;
     RsvgNode          *marker_end;
     RsvgNode          *mask;
-    guint8             opacity;             /* 0..255 */
+    float              opacity;
     gboolean           overflow;
     cairo_antialias_t  shape_rendering;
-    RsvgColor          stop_color;
-    guint8             stop_opacity;        /* 0..255 */
-    RsvgPaintServer    stroke;
+    RsvgPaint          stop_color;
+    float              stop_opacity;
+    RsvgPaint          stroke;
     RsvgLengthList     stroke_dasharray;
     RsvgLength         stroke_dashoffset;
     cairo_line_cap_t   stroke_linecap;
     cairo_line_join_t  stroke_linejoin;
     double             stroke_miterlimit;
-    guint8             stroke_opacity;      /* 0..255 */
+    float              stroke_opacity;
     RsvgLength         stroke_width;
     TextAnchor         text_anchor;
     TextDecoration     text_decoration;

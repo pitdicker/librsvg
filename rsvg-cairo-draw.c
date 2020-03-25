@@ -45,13 +45,13 @@
 static const cairo_user_data_key_t surface_pixel_data_key;
 
 static void
-_pattern_add_rsvg_color_stops (cairo_pattern_t * pattern,
-                               GPtrArray * stops, guint32 current_color_rgb, guint8 opacity)
+_pattern_add_rsvg_color_stops (cairo_pattern_t *pattern, const GPtrArray *stops,
+                               const RsvgColor current_color, const float opacity)
 {
     gsize i;
     RsvgGradientStop *stop;
     RsvgNode *node;
-    guint32 argb;
+    RsvgColor color;
     double r, g, b, a;
 
     for (i = 0; i < stops->len; i++) {
@@ -59,15 +59,15 @@ _pattern_add_rsvg_color_stops (cairo_pattern_t * pattern,
         if (RSVG_NODE_TYPE (node) != RSVG_NODE_TYPE_STOP)
             continue;
 
-        if (node->state->stop_color.current_color)
-            argb = current_color_rgb; /* TODO: is this the correct current color? */
+        if (node->state->stop_color.paint.type == CURRENT_COLOR)
+            color = current_color; /* TODO: is this the correct current color? */
         else
-            argb = node->state->stop_color.color;
+            color = node->state->stop_color.color;
 
-        r = ((argb >> 16) & 0xff) / 255.0;
-        g = ((argb >>  8) & 0xff) / 255.0;
-        b = ((argb >>  0) & 0xff) / 255.0;
-        a =  (argb >> 24) / 255.0 * node->state->stop_opacity / 255.0 * opacity / 255.0;
+        r = CLAMP (color.r / 255., 0., 1.);
+        g = CLAMP (color.g / 255., 0., 1.);
+        b = CLAMP (color.b / 255., 0., 1.);
+        a = CLAMP (color.a * node->state->stop_opacity * opacity, 0., 1.);
 
         stop = (RsvgGradientStop *) node;
         cairo_pattern_add_color_stop_rgba (pattern, stop->offset, r, g, b, a);
@@ -77,7 +77,9 @@ _pattern_add_rsvg_color_stops (cairo_pattern_t * pattern,
 static void
 _set_source_rsvg_linear_gradient (RsvgDrawingCtx * ctx,
                                   RsvgLinearGradient * linear,
-                                  guint32 current_color_rgb, guint8 opacity, RsvgBbox bbox)
+                                  RsvgColor current_color,
+                                  const float opacity,
+                                  RsvgBbox bbox)
 {
     RsvgCairoRender *render = RSVG_CAIRO_RENDER (ctx->render);
     cairo_t *cr = render->cr;
@@ -88,7 +90,8 @@ _set_source_rsvg_linear_gradient (RsvgDrawingCtx * ctx,
     linear = &statlinear;
     rsvg_linear_gradient_fix_fallback (linear);
 
-    current_color_rgb = ((RsvgNode *) linear)->state->color;
+    /* TODO: this makes the function argument current_color useless */
+    current_color = ((RsvgNode *) linear)->state->color;
 
     if (linear->obj_bbox)
         _rsvg_push_view_box (ctx, 1., 1.);
@@ -111,7 +114,7 @@ _set_source_rsvg_linear_gradient (RsvgDrawingCtx * ctx,
     cairo_pattern_set_matrix (pattern, &matrix);
     cairo_pattern_set_extend (pattern, linear->spread);
 
-    _pattern_add_rsvg_color_stops (pattern, linear->super.children, current_color_rgb, opacity);
+    _pattern_add_rsvg_color_stops (pattern, linear->super.children, current_color, opacity);
 
     cairo_set_source (cr, pattern);
     cairo_pattern_destroy (pattern);
@@ -120,7 +123,9 @@ _set_source_rsvg_linear_gradient (RsvgDrawingCtx * ctx,
 static void
 _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
                                   RsvgRadialGradient * radial,
-                                  guint32 current_color_rgb, guint8 opacity, RsvgBbox bbox)
+                                  RsvgColor current_color,
+                                  const float opacity,
+                                  RsvgBbox bbox)
 {
     RsvgCairoRender *render = RSVG_CAIRO_RENDER (ctx->render);
     cairo_t *cr = render->cr;
@@ -131,7 +136,8 @@ _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
     radial = &statradial;
     rsvg_radial_gradient_fix_fallback (radial);
 
-   current_color_rgb = ((RsvgNode *) radial)->state->color;
+    /* TODO: this makes the function argument current_color useless */
+    current_color = ((RsvgNode *) radial)->state->color;
 
     if (radial->obj_bbox)
         _rsvg_push_view_box (ctx, 1., 1.);
@@ -157,7 +163,7 @@ _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
     cairo_pattern_set_matrix (pattern, &matrix);
     cairo_pattern_set_extend (pattern, radial->spread);
 
-    _pattern_add_rsvg_color_stops (pattern, radial->super.children, current_color_rgb, opacity);
+    _pattern_add_rsvg_color_stops (pattern, radial->super.children, current_color, opacity);
 
     cairo_set_source (cr, pattern);
     cairo_pattern_destroy (pattern);
@@ -165,23 +171,24 @@ _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
 
 static void
 _set_source_rsvg_solid_color (const RsvgDrawingCtx *ctx,
-                               const guint32 argb, const guint8 opacity)
+                              const RsvgColor color, const float opacity)
 {
     RsvgCairoRender *render = RSVG_CAIRO_RENDER (ctx->render);
     cairo_t *cr = render->cr;
     double r, g, b, a;
-
-    r = ((argb >> 16) & 0xff) / 255.0;
-    g = ((argb >>  8) & 0xff) / 255.0;
-    b = ((argb >>  0) & 0xff) / 255.0;
-    a =  (argb >> 24) / 255.0 * (opacity / 255.0);
+    
+    r = CLAMP (color.r / 255., 0., 1.);
+    g = CLAMP (color.g / 255., 0., 1.);
+    b = CLAMP (color.b / 255., 0., 1.);
+    a = CLAMP (color.a * opacity, 0., 1.);
 
     cairo_set_source_rgba (cr, r, g, b, a);
 }
 
 static void
 _set_source_rsvg_pattern (RsvgDrawingCtx * ctx,
-                          RsvgPattern * rsvg_pattern, guint8 opacity, RsvgBbox bbox)
+                          RsvgPattern * rsvg_pattern,
+                          RsvgBbox bbox)
 {
     RsvgCairoRender *render = RSVG_CAIRO_RENDER (ctx->render);
     RsvgPattern local_pattern = *rsvg_pattern;
@@ -329,29 +336,30 @@ _set_source_rsvg_pattern (RsvgDrawingCtx * ctx,
 /* note: _set_source_rsvg_paint_server does not change cairo's CTM */
 static void
 _set_source_rsvg_paint_server (RsvgDrawingCtx * ctx,
-                               guint32 current_color_rgb,
-                               RsvgPaintServer ps,
-                               guint8 opacity, RsvgBbox bbox, guint32 current_color)
+                               RsvgColor current_color,
+                               RsvgPaint ps,
+                               float opacity, RsvgBbox bbox)
 {
-    switch (ps.type) {
-    case RSVG_PAINT_SERVER_NONE:
-        g_assert (ps.type != RSVG_PAINT_SERVER_NONE);
+    switch (ps.paint.type) {
+    case NONE:
+        g_assert (ps.paint.type != NONE);
         break;
-    case RSVG_PAINT_SERVER_SOLID:
-        _set_source_rsvg_solid_color (ctx, ps.core.color, opacity);
-        break;
-    case RSVG_PAINT_SERVER_CURRENT_COLOR:
+    case CURRENT_COLOR:
         _set_source_rsvg_solid_color (ctx, current_color, opacity);
         break;
-    case RSVG_PAINT_SERVER_LIN_GRAD:
-        _set_source_rsvg_linear_gradient (ctx, ps.core.lingrad, current_color_rgb, opacity, bbox);
+    case LINEAR_GRADIENT:
+        _set_source_rsvg_linear_gradient (ctx, (RsvgLinearGradient *) ps.paint.server,
+                                          current_color, opacity, bbox);
         break;
-    case RSVG_PAINT_SERVER_RAD_GRAD:
-        _set_source_rsvg_radial_gradient (ctx, ps.core.radgrad, current_color_rgb, opacity, bbox);
+    case RADIAL_GRADIENT:
+        _set_source_rsvg_radial_gradient (ctx, (RsvgRadialGradient *) ps.paint.server,
+                                          current_color, opacity, bbox);
         break;
-    case RSVG_PAINT_SERVER_PATTERN:
-        _set_source_rsvg_pattern (ctx, ps.core.pattern, opacity, bbox);
+    case PATTERN:
+        _set_source_rsvg_pattern (ctx, (RsvgPattern *) ps.paint.server, bbox);
         break;
+    default:
+        _set_source_rsvg_solid_color (ctx, ps.color, opacity);
     }
 }
 
@@ -417,7 +425,7 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
     bbox.virgin = 0;
 
     rotation = pango_gravity_to_rotation (gravity);
-    if (state->fill.type != RSVG_PAINT_SERVER_NONE) {
+    if (state->fill.paint.type != NONE) {
         cairo_save (render->cr);
         cairo_move_to (render->cr, x, y);
         rsvg_bbox_insert (&render->bbox, &bbox);
@@ -425,14 +433,14 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
                                        state->color,
                                        state->fill,
                                        state->fill_opacity,
-                                       bbox, rsvg_current_state (ctx)->color);
+                                       bbox);
         if (rotation != 0.)
             cairo_rotate (render->cr, -rotation);
         pango_cairo_show_layout (render->cr, layout);
         cairo_restore (render->cr);
     }
 
-    if (state->stroke.type != RSVG_PAINT_SERVER_NONE) {
+    if (state->stroke.paint.type != NONE) {
         cairo_save (render->cr);
         cairo_move_to (render->cr, x, y);
         rsvg_bbox_insert (&render->bbox, &bbox);
@@ -441,7 +449,7 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
                                        state->color,
                                        state->stroke,
                                        state->stroke_opacity,
-                                       bbox, rsvg_current_state (ctx)->color);
+                                       bbox);
 
         if (rotation != 0.)
             cairo_rotate (render->cr, -rotation);
@@ -477,14 +485,14 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
     double backup_tolerance;
     double *dasharray;
     guint n_dashes;
+    float opacity;
 
-    if (state->fill.type == RSVG_PAINT_SERVER_NONE &&
-        state->stroke.type == RSVG_PAINT_SERVER_NONE)
+    if (state->fill.paint.type == NONE && state->stroke.paint.type == NONE)
         return;
 
-    need_tmpbuf = (state->fill.type != RSVG_PAINT_SERVER_NONE &&
-                   state->stroke.type != RSVG_PAINT_SERVER_NONE &&
-                   state->opacity != 0xff)
+    need_tmpbuf = (state->fill.paint.type != NONE &&
+                   state->stroke.paint.type != NONE &&
+                   state->opacity != 1.0)
                   || state->clip_path || state->mask || state->filter
                   || (state->comp_op != CAIRO_OPERATOR_OVER);
 
@@ -523,7 +531,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
        _rendering_ time speedups, are these rather expensive operations
        really needed here? */
 
-    if (state->fill.type != RSVG_PAINT_SERVER_NONE) {
+    if (state->fill.paint.type != NONE) {
         RsvgBbox fb;
         rsvg_bbox_init (&fb, &state->affine);
         cairo_fill_extents (cr, &fb.rect.x, &fb.rect.y, &fb.rect.width, &fb.rect.height);
@@ -532,7 +540,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
         fb.virgin = 0;
         rsvg_bbox_insert (&bbox, &fb);
     }
-    if (state->stroke.type != RSVG_PAINT_SERVER_NONE) {
+    if (state->stroke.paint.type != NONE) {
         RsvgBbox sb;
         rsvg_bbox_init (&sb, &state->affine);
         cairo_stroke_extents (cr, &sb.rect.x, &sb.rect.y, &sb.rect.width, &sb.rect.height);
@@ -546,38 +554,33 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
 
     rsvg_bbox_insert (&render->bbox, &bbox);
 
-    if (state->fill.type != RSVG_PAINT_SERVER_NONE) {
-        int opacity;
-
+    if (state->fill.paint.type != NONE) {
         cairo_set_fill_rule (cr, state->fill_rule);
 
+        opacity = state->fill_opacity;
         if (!need_tmpbuf)
-            opacity = (state->fill_opacity * state->opacity) / 255;
-        else
-            opacity = state->fill_opacity;
+            opacity *= state->opacity;
 
         _set_source_rsvg_paint_server (ctx,
                                        state->color,
                                        state->fill,
-                                       opacity, bbox, rsvg_current_state (ctx)->color);
+                                       opacity, bbox);
 
-        if (state->stroke.type != RSVG_PAINT_SERVER_NONE)
+        if (state->stroke.paint.type != NONE)
             cairo_fill_preserve (cr);
         else
             cairo_fill (cr);
     }
 
-    if (state->stroke.type != RSVG_PAINT_SERVER_NONE) {
-        int opacity;
+    if (state->stroke.paint.type != NONE) {
+        opacity = state->stroke_opacity;
         if (!need_tmpbuf)
-            opacity = (state->stroke_opacity * state->opacity) / 255;
-        else
-            opacity = state->stroke_opacity;
-
+            opacity *= state->opacity;
+ 
         _set_source_rsvg_paint_server (ctx,
                                        state->color,
                                        state->stroke,
-                                       opacity, bbox, rsvg_current_state (ctx)->color);
+                                       opacity, bbox);
 
         cairo_stroke (cr);
     }
@@ -727,7 +730,7 @@ rsvg_cairo_generate_mask (cairo_t * cr, RsvgMask * self, RsvgDrawingCtx * ctx, R
             guint32 *pixel = (guint32 *) row_data + i;
             *pixel = ((((*pixel & 0x00ff0000) >> 16) * 13817 +
                        ((*pixel & 0x0000ff00) >> 8) * 46518 +
-                       ((*pixel & 0x000000ff)) * 4688) * state->opacity);
+                       ((*pixel & 0x000000ff)) * 4688) * state->opacity * 255);
         }
     }
 
@@ -768,7 +771,7 @@ rsvg_cairo_push_render_stack (RsvgDrawingCtx * ctx)
         if (((RsvgClipPath *) rsvg_current_state (ctx)->clip_path)->units == objectBoundingBox)
             lateclip = TRUE;
 
-    if (state->opacity == 0xFF
+    if (state->opacity == 1.0
         && !state->filter && !state->mask && !lateclip && (state->comp_op == CAIRO_OPERATOR_OVER)
         && (state->enable_background == RSVG_ENABLE_BACKGROUND_ACCUMULATE))
         return;
@@ -825,7 +828,7 @@ rsvg_cairo_pop_render_stack (RsvgDrawingCtx * ctx)
         if (((RsvgClipPath *) rsvg_current_state (ctx)->clip_path)->units == objectBoundingBox)
             lateclip = TRUE;
 
-    if (state->opacity == 0xFF
+    if (state->opacity == 1.0
         && !state->filter && !state->mask && !lateclip && (state->comp_op == CAIRO_OPERATOR_OVER)
         && (state->enable_background == RSVG_ENABLE_BACKGROUND_ACCUMULATE))
         return;
@@ -859,8 +862,8 @@ rsvg_cairo_pop_render_stack (RsvgDrawingCtx * ctx)
 
     if (state->mask) {
         rsvg_cairo_generate_mask (render->cr, (RsvgMask *) state->mask, ctx, &render->bbox);
-    } else if (state->opacity != 0xFF)
-        cairo_paint_with_alpha (render->cr, (double) state->opacity / 255.0);
+    } else if (state->opacity != 1.0)
+        cairo_paint_with_alpha (render->cr, state->opacity);
     else
         cairo_paint (render->cr);
 

@@ -187,26 +187,23 @@ _rsvg_parse_length (const char *str, const char **end, const RsvgPropSrc prop_sr
     return out;
 }
 
-static guint8
+static float
 _rsvg_parse_rgb_value (const char *str, const char **end, gboolean is_percentage)
 {
-    gint value;
-    double temp;
+    float value;
 
     while (_rsvg_is_wsp (*str))
         str++;
 
     if (is_percentage) {
-        temp = _rsvg_parse_number (str, end, RSVG_NUMBER_FORMAT_CSS2);
+        value = _rsvg_parse_number (str, end, RSVG_NUMBER_FORMAT_CSS2) * 2.55;
         if (*end == str || **end != '%')
             goto invalid_value;
         (*end)++;
-        value = floor (CLAMP (temp, 0., 100.) * 2.55 + 0.5);
     } else {
         value = g_ascii_strtoll (str, (gchar **) end, 10);
         if (*end == str)
             goto invalid_value;
-        value = CLAMP (value, 0, 255);
     }
     str = *end;
 
@@ -217,203 +214,202 @@ _rsvg_parse_rgb_value (const char *str, const char **end, gboolean is_percentage
 
 invalid_value:
     *end = str;
-    return 0x00;
+    return 0.0;
 }
 
-guint32
+RsvgColor
 _rsvg_parse_raw_color (const char *str, const char **end)
 {
-    guint32 value;
+    RsvgColor color;
     guint i;
     gboolean has_alpha = FALSE;
     gboolean is_percentage = FALSE;
-    guint8 r, g, b, a = 255;
-    double temp;
     const char *str_start;
+    guint32 hex;
 
     struct keywords {
         const char *keyword;
-        guint32 value;
+        RsvgColor value;
     };
     const struct keywords svg_color_keywords[] = {
-        {"aliceblue",            0xfff0f8ff},
-        {"antiquewhite",         0xfffaebd7},
-        {"aqua",                 0xff00ffff},
-        {"aquamarine",           0xff7fffd4},
-        {"azure",                0xfff0ffff},
-        {"beige",                0xfff5f5dc},
-        {"bisque",               0xffffe4c4},
-        {"black",                0xff000000},
-        {"blanchedalmond",       0xffffebcd},
-        {"blue",                 0xff0000ff},
-        {"blueviolet",           0xff8a2be2},
-        {"brown",                0xffa52a2a},
-        {"burlywood",            0xffdeb887},
-        {"cadetblue",            0xff5f9ea0},
-        {"chartreuse",           0xff7fff00},
-        {"chocolate",            0xffd2691e},
-        {"coral",                0xffff7f50},
-        {"cornflowerblue",       0xff6495ed},
-        {"cornsilk",             0xfffff8dc},
-        {"crimson",              0xffdc143c},
-        {"cyan",                 0xff00ffff},
-        {"darkblue",             0xff00008b},
-        {"darkcyan",             0xff008b8b},
-        {"darkgoldenrod",        0xffb8860b},
-        {"darkgray",             0xffa9a9a9},
-        {"darkgreen",            0xff006400},
-        {"darkgrey",             0xffa9a9a9},
-        {"darkkhaki",            0xffbdb76b},
-        {"darkmagenta",          0xff8b008b},
-        {"darkolivegreen",       0xff556b2f},
-        {"darkorange",           0xffff8c00},
-        {"darkorchid",           0xff9932cc},
-        {"darkred",              0xff8b0000},
-        {"darksalmon",           0xffe9967a},
-        {"darkseagreen",         0xff8fbc8f},
-        {"darkslateblue",        0xff483d8b},
-        {"darkslategray",        0xff2f4f4f},
-        {"darkslategrey",        0xff2f4f4f},
-        {"darkturquoise",        0xff00ced1},
-        {"darkviolet",           0xff9400d3},
-        {"deeppink",             0xffff1493},
-        {"deepskyblue",          0xff00bfff},
-        {"dimgray",              0xff696969},
-        {"dimgrey",              0xff696969},
-        {"dodgerblue",           0xff1e90ff},
-        {"firebrick",            0xffb22222},
-        {"floralwhite",          0xfffffaf0},
-        {"forestgreen",          0xff228b22},
-        {"fuchsia",              0xffff00ff},
-        {"gainsboro",            0xffdcdcdc},
-        {"ghostwhite",           0xfff8f8ff},
-        {"gold",                 0xffffd700},
-        {"goldenrod",            0xffdaa520},
-        {"gray",                 0xff808080},
-        {"grey",                 0xff808080},
-        {"green",                0xff008000},
-        {"greenyellow",          0xffadff2f},
-        {"honeydew",             0xfff0fff0},
-        {"hotpink",              0xffff69b4},
-        {"indianred",            0xffcd5c5c},
-        {"indigo",               0xff4b0082},
-        {"ivory",                0xfffffff0},
-        {"khaki",                0xfff0e68c},
-        {"lavender",             0xffe6e6fa},
-        {"lavenderblush",        0xfffff0f5},
-        {"lawngreen",            0xff7cfc00},
-        {"lemonchiffon",         0xfffffacd},
-        {"lightblue",            0xffadd8e6},
-        {"lightcoral",           0xfff08080},
-        {"lightcyan",            0xffe0ffff},
-        {"lightgoldenrodyellow", 0xfffafad2},
-        {"lightgray",            0xffd3d3d3},
-        {"lightgreen",           0xff90ee90},
-        {"lightgrey",            0xffd3d3d3},
-        {"lightpink",            0xffffb6c1},
-        {"lightsalmon",          0xffffa07a},
-        {"lightseagreen",        0xff20b2aa},
-        {"lightskyblue",         0xff87cefa},
-        {"lightslategray",       0xff778899},
-        {"lightslategrey",       0xff778899},
-        {"lightsteelblue",       0xffb0c4de},
-        {"lightyellow",          0xffffffe0},
-        {"lime",                 0xff00ff00},
-        {"limegreen",            0xff32cd32},
-        {"linen",                0xfffaf0e6},
-        {"magenta",              0xffff00ff},
-        {"maroon",               0xff800000},
-        {"mediumaquamarine",     0xff66cdaa},
-        {"mediumblue",           0xff0000cd},
-        {"mediumorchid",         0xffba55d3},
-        {"mediumpurple",         0xff9370db},
-        {"mediumseagreen",       0xff3cb371},
-        {"mediumslateblue",      0xff7b68ee},
-        {"mediumspringgreen",    0xff00fa9a},
-        {"mediumturquoise",      0xff48d1cc},
-        {"mediumvioletred",      0xffc71585},
-        {"midnightblue",         0xff191970},
-        {"mintcream",            0xfff5fffa},
-        {"mistyrose",            0xffffe4e1},
-        {"moccasin",             0xffffe4b5},
-        {"navajowhite",          0xffffdead},
-        {"navy",                 0xff000080},
-        {"oldlace",              0xfffdf5e6},
-        {"olive",                0xff808000},
-        {"olivedrab",            0xff6b8e23},
-        {"orange",               0xffffa500},
-        {"orangered",            0xffff4500},
-        {"orchid",               0xffda70d6},
-        {"palegoldenrod",        0xffeee8aa},
-        {"palegreen",            0xff98fb98},
-        {"paleturquoise",        0xffafeeee},
-        {"palevioletred",        0xffdb7093},
-        {"papayawhip",           0xffffefd5},
-        {"peachpuff",            0xffffdab9},
-        {"peru",                 0xffcd853f},
-        {"pink",                 0xffffc0cb},
-        {"plum",                 0xffdda0dd},
-        {"powderblue",           0xffb0e0e6},
-        {"purple",               0xff800080},
-        {"red",                  0xffff0000},
-        {"rosybrown",            0xffbc8f8f},
-        {"royalblue",            0xff4169e1},
-        {"saddlebrown",          0xff8b4513},
-        {"salmon",               0xfffa8072},
-        {"sandybrown",           0xfff4a460},
-        {"seagreen",             0xff2e8b57},
-        {"seashell",             0xfffff5ee},
-        {"sienna",               0xffa0522d},
-        {"silver",               0xffc0c0c0},
-        {"skyblue",              0xff87ceeb},
-        {"slateblue",            0xff6a5acd},
-        {"slategray",            0xff708090},
-        {"slategrey",            0xff708090},
-        {"snow",                 0xfffffafa},
-        {"springgreen",          0xff00ff7f},
-        {"steelblue",            0xff4682b4},
-        {"tan",                  0xffd2b48c},
-        {"teal",                 0xff008080},
-        {"thistle",              0xffd8bfd8},
-        {"tomato",               0xffff6347},
-        {"turquoise",            0xff40e0d0},
-        {"violet",               0xffee82ee},
-        {"wheat",                0xfff5deb3},
-        {"white",                0xffffffff},
-        {"whitesmoke",           0xfff5f5f5},
-        {"yellow",               0xffffff00},
-        {"yellowgreen",          0xff9acd32}
+        {"aliceblue",            (RsvgColor) {240, 248, 255, 1.0}},
+        {"antiquewhite",         (RsvgColor) {250, 235, 215, 1.0}},
+        {"aqua",                 (RsvgColor) {  0, 255, 255, 1.0}},
+        {"aquamarine",           (RsvgColor) {127, 255, 212, 1.0}},
+        {"azure",                (RsvgColor) {240, 255, 255, 1.0}},
+        {"beige",                (RsvgColor) {245, 245, 220, 1.0}},
+        {"bisque",               (RsvgColor) {255, 228, 196, 1.0}},
+        {"black",                (RsvgColor) {  0,   0,   0, 1.0}},
+        {"blanchedalmond",       (RsvgColor) {255, 235, 205, 1.0}},
+        {"blue",                 (RsvgColor) {  0,   0, 255, 1.0}},
+        {"blueviolet",           (RsvgColor) {138,  43, 226, 1.0}},
+        {"brown",                (RsvgColor) {165,  42,  42, 1.0}},
+        {"burlywood",            (RsvgColor) {222, 184, 135, 1.0}},
+        {"cadetblue",            (RsvgColor) { 95, 158, 160, 1.0}},
+        {"chartreuse",           (RsvgColor) {127, 255,   0, 1.0}},
+        {"chocolate",            (RsvgColor) {210, 105,  30, 1.0}},
+        {"coral",                (RsvgColor) {255, 127,  80, 1.0}},
+        {"cornflowerblue",       (RsvgColor) {100, 149, 237, 1.0}},
+        {"cornsilk",             (RsvgColor) {255, 248, 220, 1.0}},
+        {"crimson",              (RsvgColor) {220,  20,  60, 1.0}},
+        {"cyan",                 (RsvgColor) {  0, 255, 255, 1.0}},
+        {"darkblue",             (RsvgColor) {  0,   0, 139, 1.0}},
+        {"darkcyan",             (RsvgColor) {  0, 139, 139, 1.0}},
+        {"darkgoldenrod",        (RsvgColor) {184, 134,  11, 1.0}},
+        {"darkgray",             (RsvgColor) {169, 169, 169, 1.0}},
+        {"darkgreen",            (RsvgColor) {  0, 100,   0, 1.0}},
+        {"darkgrey",             (RsvgColor) {169, 169, 169, 1.0}},
+        {"darkkhaki",            (RsvgColor) {189, 183, 107, 1.0}},
+        {"darkmagenta",          (RsvgColor) {139,   0, 139, 1.0}},
+        {"darkolivegreen",       (RsvgColor) { 85, 107,  47, 1.0}},
+        {"darkorange",           (RsvgColor) {255, 140,   0, 1.0}},
+        {"darkorchid",           (RsvgColor) {153,  50, 204, 1.0}},
+        {"darkred",              (RsvgColor) {139,   0,   0, 1.0}},
+        {"darksalmon",           (RsvgColor) {233, 150, 122, 1.0}},
+        {"darkseagreen",         (RsvgColor) {143, 188, 143, 1.0}},
+        {"darkslateblue",        (RsvgColor) { 72,  61, 139, 1.0}},
+        {"darkslategray",        (RsvgColor) { 47,  79,  79, 1.0}},
+        {"darkslategrey",        (RsvgColor) { 47,  79,  79, 1.0}},
+        {"darkturquoise",        (RsvgColor) {  0, 206, 209, 1.0}},
+        {"darkviolet",           (RsvgColor) {148,   0, 211, 1.0}},
+        {"deeppink",             (RsvgColor) {255,  20, 147, 1.0}},
+        {"deepskyblue",          (RsvgColor) {  0, 191, 255, 1.0}},
+        {"dimgray",              (RsvgColor) {105, 105, 105, 1.0}},
+        {"dimgrey",              (RsvgColor) {105, 105, 105, 1.0}},
+        {"dodgerblue",           (RsvgColor) { 30, 144, 255, 1.0}},
+        {"firebrick",            (RsvgColor) {178,  34,  34, 1.0}},
+        {"floralwhite",          (RsvgColor) {255, 250, 240, 1.0}},
+        {"forestgreen",          (RsvgColor) { 34, 139,  34, 1.0}},
+        {"fuchsia",              (RsvgColor) {255,   0, 255, 1.0}},
+        {"gainsboro",            (RsvgColor) {220, 220, 220, 1.0}},
+        {"ghostwhite",           (RsvgColor) {248, 248, 255, 1.0}},
+        {"gold",                 (RsvgColor) {255, 215,   0, 1.0}},
+        {"goldenrod",            (RsvgColor) {218, 165,  32, 1.0}},
+        {"gray",                 (RsvgColor) {128, 128, 128, 1.0}},
+        {"grey",                 (RsvgColor) {128, 128, 128, 1.0}},
+        {"green",                (RsvgColor) {  0, 128,   0, 1.0}},
+        {"greenyellow",          (RsvgColor) {173, 255,  47, 1.0}},
+        {"honeydew",             (RsvgColor) {240, 255, 240, 1.0}},
+        {"hotpink",              (RsvgColor) {255, 105, 180, 1.0}},
+        {"indianred",            (RsvgColor) {205,  92,  92, 1.0}},
+        {"indigo",               (RsvgColor) { 75,   0, 130, 1.0}},
+        {"ivory",                (RsvgColor) {255, 255, 240, 1.0}},
+        {"khaki",                (RsvgColor) {240, 230, 140, 1.0}},
+        {"lavender",             (RsvgColor) {230, 230, 250, 1.0}},
+        {"lavenderblush",        (RsvgColor) {255, 240, 245, 1.0}},
+        {"lawngreen",            (RsvgColor) {124, 252,   0, 1.0}},
+        {"lemonchiffon",         (RsvgColor) {255, 250, 205, 1.0}},
+        {"lightblue",            (RsvgColor) {173, 216, 230, 1.0}},
+        {"lightcoral",           (RsvgColor) {240, 128, 128, 1.0}},
+        {"lightcyan",            (RsvgColor) {224, 255, 255, 1.0}},
+        {"lightgoldenrodyellow", (RsvgColor) {250, 250, 210, 1.0}},
+        {"lightgray",            (RsvgColor) {211, 211, 211, 1.0}},
+        {"lightgreen",           (RsvgColor) {144, 238, 144, 1.0}},
+        {"lightgrey",            (RsvgColor) {211, 211, 211, 1.0}},
+        {"lightpink",            (RsvgColor) {255, 182, 193, 1.0}},
+        {"lightsalmon",          (RsvgColor) {255, 160, 122, 1.0}},
+        {"lightseagreen",        (RsvgColor) { 32, 178, 170, 1.0}},
+        {"lightskyblue",         (RsvgColor) {135, 206, 250, 1.0}},
+        {"lightslategray",       (RsvgColor) {119, 136, 153, 1.0}},
+        {"lightslategrey",       (RsvgColor) {119, 136, 153, 1.0}},
+        {"lightsteelblue",       (RsvgColor) {176, 196, 222, 1.0}},
+        {"lightyellow",          (RsvgColor) {255, 255, 224, 1.0}},
+        {"lime",                 (RsvgColor) {  0, 255,   0, 1.0}},
+        {"limegreen",            (RsvgColor) { 50, 205,  50, 1.0}},
+        {"linen",                (RsvgColor) {250, 240, 230, 1.0}},
+        {"magenta",              (RsvgColor) {255,   0, 255, 1.0}},
+        {"maroon",               (RsvgColor) {128,   0,   0, 1.0}},
+        {"mediumaquamarine",     (RsvgColor) {102, 205, 170, 1.0}},
+        {"mediumblue",           (RsvgColor) {  0,   0, 205, 1.0}},
+        {"mediumorchid",         (RsvgColor) {186,  85, 211, 1.0}},
+        {"mediumpurple",         (RsvgColor) {147, 112, 219, 1.0}},
+        {"mediumseagreen",       (RsvgColor) { 60, 179, 113, 1.0}},
+        {"mediumslateblue",      (RsvgColor) {123, 104, 238, 1.0}},
+        {"mediumspringgreen",    (RsvgColor) {  0, 250, 154, 1.0}},
+        {"mediumturquoise",      (RsvgColor) { 72, 209, 204, 1.0}},
+        {"mediumvioletred",      (RsvgColor) {199,  21, 133, 1.0}},
+        {"midnightblue",         (RsvgColor) { 25,  25, 112, 1.0}},
+        {"mintcream",            (RsvgColor) {245, 255, 250, 1.0}},
+        {"mistyrose",            (RsvgColor) {255, 228, 225, 1.0}},
+        {"moccasin",             (RsvgColor) {255, 228, 181, 1.0}},
+        {"navajowhite",          (RsvgColor) {255, 222, 173, 1.0}},
+        {"navy",                 (RsvgColor) {  0,   0, 128, 1.0}},
+        {"oldlace",              (RsvgColor) {253, 245, 230, 1.0}},
+        {"olive",                (RsvgColor) {128, 128,   0, 1.0}},
+        {"olivedrab",            (RsvgColor) {107, 142,  35, 1.0}},
+        {"orange",               (RsvgColor) {255, 165,   0, 1.0}},
+        {"orangered",            (RsvgColor) {255,  69,   0, 1.0}},
+        {"orchid",               (RsvgColor) {218, 112, 214, 1.0}},
+        {"palegoldenrod",        (RsvgColor) {238, 232, 170, 1.0}},
+        {"palegreen",            (RsvgColor) {152, 251, 152, 1.0}},
+        {"paleturquoise",        (RsvgColor) {175, 238, 238, 1.0}},
+        {"palevioletred",        (RsvgColor) {219, 112, 147, 1.0}},
+        {"papayawhip",           (RsvgColor) {255, 239, 213, 1.0}},
+        {"peachpuff",            (RsvgColor) {255, 218, 185, 1.0}},
+        {"peru",                 (RsvgColor) {205, 133,  63, 1.0}},
+        {"pink",                 (RsvgColor) {255, 192, 203, 1.0}},
+        {"plum",                 (RsvgColor) {221, 160, 221, 1.0}},
+        {"powderblue",           (RsvgColor) {176, 224, 230, 1.0}},
+        {"purple",               (RsvgColor) {128,   0, 128, 1.0}},
+        {"red",                  (RsvgColor) {255,   0,   0, 1.0}},
+        {"rosybrown",            (RsvgColor) {188, 143, 143, 1.0}},
+        {"royalblue",            (RsvgColor) { 65, 105, 225, 1.0}},
+        {"saddlebrown",          (RsvgColor) {139,  69,  19, 1.0}},
+        {"salmon",               (RsvgColor) {250, 128, 114, 1.0}},
+        {"sandybrown",           (RsvgColor) {244, 164,  96, 1.0}},
+        {"seagreen",             (RsvgColor) { 46, 139,  87, 1.0}},
+        {"seashell",             (RsvgColor) {255, 245, 238, 1.0}},
+        {"sienna",               (RsvgColor) {160,  82,  45, 1.0}},
+        {"silver",               (RsvgColor) {192, 192, 192, 1.0}},
+        {"skyblue",              (RsvgColor) {135, 206, 235, 1.0}},
+        {"slateblue",            (RsvgColor) {106,  90, 205, 1.0}},
+        {"slategray",            (RsvgColor) {112, 128, 144, 1.0}},
+        {"slategrey",            (RsvgColor) {112, 128, 144, 1.0}},
+        {"snow",                 (RsvgColor) {255, 250, 250, 1.0}},
+        {"springgreen",          (RsvgColor) {  0, 255, 127, 1.0}},
+        {"steelblue",            (RsvgColor) { 70, 130, 180, 1.0}},
+        {"tan",                  (RsvgColor) {210, 180, 140, 1.0}},
+        {"teal",                 (RsvgColor) {  0, 128, 128, 1.0}},
+        {"thistle",              (RsvgColor) {216, 191, 216, 1.0}},
+        {"tomato",               (RsvgColor) {255,  99,  71, 1.0}},
+        {"turquoise",            (RsvgColor) { 64, 224, 208, 1.0}},
+        {"violet",               (RsvgColor) {238, 130, 238, 1.0}},
+        {"wheat",                (RsvgColor) {245, 222, 179, 1.0}},
+        {"white",                (RsvgColor) {255, 255, 255, 1.0}},
+        {"whitesmoke",           (RsvgColor) {245, 245, 245, 1.0}},
+        {"yellow",               (RsvgColor) {255, 255,   0, 1.0}},
+        {"yellowgreen",          (RsvgColor) {154, 205,  50, 1.0}},
     };
     const struct keywords system_color_keywords[] = {
         /* emulate using default system colors of Windows 98 */
-        {"ActiveBorder",         0xffc0c0c0},
-        {"ActiveCaption",        0xff000084},
-        {"AppWorkspace",         0xff808080},
-        {"Background",           0xff008081},
-        {"ButtonFace",           0xffc0c0c0},
-        {"ButtonHighlight",      0xffdfdfdf},
-        {"ButtonShadow",         0xff808080},
-        {"ButtonText",           0xff000000},
-        {"CaptionText",          0xffffffff},
-        {"GrayText",             0xff808080},
-        {"Highlight",            0xff08246b},
-        {"HighlightText",        0xffffffff},
-        {"InactiveBorder",       0xffc0c0c0},
-        {"InactiveCaption",      0xff808080},
-        {"InactiveCaptionText",  0xffc0c0c0},
-        {"InfoBackground",       0xffffffe1},
-        {"InfoText",             0xff000000},
-        {"Menu",                 0xffc0c0c0},
-        {"MenuText",             0xff000000},
-        {"Scrollbar",            0xffc0c0c0},
-        {"ThreeDDarkShadow",     0xff000000},
-        {"ThreeDFace",           0xffc0c0c0},
-        {"ThreeDHighlight",      0xffdfdfdf},
-        {"ThreeDLightShadow",    0xffffffff},
-        {"ThreeDShadow",         0xff808080},
-        {"Window",               0xffffffff},
-        {"WindowFrame",          0xff000000},
-        {"WindowText",           0xff000000}
+        {"ActiveBorder",         (RsvgColor) {192, 192, 192, 1.0}},
+        {"ActiveCaption",        (RsvgColor) {  0,   0, 132, 1.0}},
+        {"AppWorkspace",         (RsvgColor) {128, 128, 128, 1.0}},
+        {"Background",           (RsvgColor) {  0, 128, 129, 1.0}},
+        {"ButtonFace",           (RsvgColor) {192, 192, 192, 1.0}},
+        {"ButtonHighlight",      (RsvgColor) {223, 223, 223, 1.0}},
+        {"ButtonShadow",         (RsvgColor) {128, 128, 128, 1.0}},
+        {"ButtonText",           (RsvgColor) {  0,   0,   0, 1.0}},
+        {"CaptionText",          (RsvgColor) {255, 255, 255, 1.0}},
+        {"GrayText",             (RsvgColor) {128, 128, 128, 1.0}},
+        {"Highlight",            (RsvgColor) {  8,  36, 107, 1.0}},
+        {"HighlightText",        (RsvgColor) {255, 255, 255, 1.0}},
+        {"InactiveBorder",       (RsvgColor) {192, 192, 192, 1.0}},
+        {"InactiveCaption",      (RsvgColor) {128, 128, 128, 1.0}},
+        {"InactiveCaptionText",  (RsvgColor) {192, 192, 192, 1.0}},
+        {"InfoBackground",       (RsvgColor) {255, 255, 225, 1.0}},
+        {"InfoText",             (RsvgColor) {  0,   0,   0, 1.0}},
+        {"Menu",                 (RsvgColor) {192, 192, 192, 1.0}},
+        {"MenuText",             (RsvgColor) {  0,   0,   0, 1.0}},
+        {"Scrollbar",            (RsvgColor) {192, 192, 192, 1.0}},
+        {"ThreeDDarkShadow",     (RsvgColor) {  0,   0,   0, 1.0}},
+        {"ThreeDFace",           (RsvgColor) {192, 192, 192, 1.0}},
+        {"ThreeDHighlight",      (RsvgColor) {223, 223, 223, 1.0}},
+        {"ThreeDLightShadow",    (RsvgColor) {255, 255, 255, 1.0}},
+        {"ThreeDShadow",         (RsvgColor) {128, 128, 128, 1.0}},
+        {"Window",               (RsvgColor) {255, 255, 255, 1.0}},
+        {"WindowFrame",          (RsvgColor) {  0,   0,   0, 1.0}},
+        {"WindowText",           (RsvgColor) {  0,   0,   0, 1.0}}
     };
     struct keywords *keyword;
 
@@ -422,29 +418,34 @@ _rsvg_parse_raw_color (const char *str, const char **end)
 
     if (*str == '#') {
         str++;
-        value = 0;
+        hex = 0;
         for (i = 0; i < 6; i++) {
             if (*str >= '0' && *str <= '9') {
-                value = (value << 4) + (*str - '0');
+                hex = (hex << 4) + (*str - '0');
             } else if (*str >= 'A' && *str <= 'F') {
-                value = (value << 4) + (*str - 'A' + 10);
+                hex = (hex << 4) + (*str - 'A' + 10);
             } else if (*str >= 'a' && *str <= 'f') {
-                value = (value << 4) + (*str - 'a' + 10);
+                hex = (hex << 4) + (*str - 'a' + 10);
             } else {
                 break;
             }
             str++;
         }
+        *end = str;
+
         if (i == 3) {
-            /* handle #nnn case */
-            value = ((value & 0xf00) << 8) | ((value & 0x0f0) << 4) | (value & 0x00f);
-            value |= value << 4;
+            /* convert #rgb to #rrggbb */
+            hex = ((hex & 0xf00) << 8) | ((hex & 0x0f0) << 4) | (hex & 0x00f);
+            hex |= hex << 4;
         } else if (i != 6) {
             goto invalid_color;
         }
-        value |= 0xff000000; /* opaque */
-        *end = str;
-        return value;
+
+        color.r = (hex >> 16) & 0xff;
+        color.g = (hex >>  8) & 0xff;
+        color.b = hex & 0xff;
+        color.a = 1.0;
+        return color;
     } else if (g_ascii_strncasecmp(str, "rgb", 3) == 0) {
         str += 3;
         if (*str == 'a') { /* rgba */
@@ -463,7 +464,7 @@ _rsvg_parse_raw_color (const char *str, const char **end)
             }
         }
 
-        r = _rsvg_parse_rgb_value (str, end, is_percentage);
+        color.r = _rsvg_parse_rgb_value (str, end, is_percentage);
         if (*end == str)
             goto invalid_color;
         str = *end;
@@ -472,7 +473,7 @@ _rsvg_parse_raw_color (const char *str, const char **end)
             goto invalid_color;
         str++;
 
-        g = _rsvg_parse_rgb_value (str, end, is_percentage);
+        color.g = _rsvg_parse_rgb_value (str, end, is_percentage);
         if (*end == str)
             goto invalid_color;
         str = *end;
@@ -481,7 +482,7 @@ _rsvg_parse_raw_color (const char *str, const char **end)
             goto invalid_color;
         str++;
 
-        b = _rsvg_parse_rgb_value (str, end, is_percentage);
+        color.b = _rsvg_parse_rgb_value (str, end, is_percentage);
         if (*end == str)
             goto invalid_color;
         str = *end;
@@ -494,11 +495,10 @@ _rsvg_parse_raw_color (const char *str, const char **end)
             while (_rsvg_is_wsp (*str))
                 str++;
 
-            temp = _rsvg_parse_number (str, end, RSVG_NUMBER_FORMAT_CSS2);
+            color.a = _rsvg_parse_number (str, end, RSVG_NUMBER_FORMAT_CSS2);
             if (*end == str)
                 goto invalid_color;
             str = *end;
-            a = floor (CLAMP (temp, 0., 1.) * 255. + 0.5);
 
             while (_rsvg_is_wsp (*str))
                 str++;
@@ -509,7 +509,7 @@ _rsvg_parse_raw_color (const char *str, const char **end)
         str++;
 
         *end = str;
-        return (a << 24) | (r << 16) | (g << 8) | b;
+        return color;
     } else if ((keyword = rsvg_match_keyword (str, svg_color_keywords, CSS_VALUE))) {
         /* TODO: does not work if the keyword is followed by something */
         *end = str + strlen(keyword->keyword);
@@ -522,7 +522,7 @@ _rsvg_parse_raw_color (const char *str, const char **end)
 
 invalid_color:
     *end = str_start;
-    return 0xff000000; /* black */
+    return (RsvgColor) {0, 0, 0, 1.0}; /* black */
 }
 
 /**
@@ -751,41 +751,38 @@ rsvg_parse_viewbox (const char *str, RsvgViewBox *result)
 }
 
 static gboolean
-_rsvg_parse_opacity (const char *str, guint8 *result, const RsvgPropSrc prop_src)
+_rsvg_parse_opacity (const char *str, float *result, const RsvgPropSrc prop_src)
 {
-    double opacity;
+    float opacity;
     const char *end;
 
     opacity = _rsvg_parse_number (str, &end, prop_src);
     if (str == end || *end != '\0')
         return FALSE;
 
-    opacity = CLAMP (opacity, 0., 1.);
-    *result = floor (opacity * 255. + 0.5);
+    *result = opacity;
 
     return TRUE;
 }
 
 static gboolean
-_rsvg_parse_color (const char *str, RsvgColor *result, const RsvgPropSrc prop_src)
+_rsvg_parse_color (const char *str, RsvgPaint *result, const RsvgPropSrc prop_src)
 {
-    guint32 argb;
+    RsvgColor color;
     const char *end;
 
     if (rsvg_keyword_cmp (str, "currentColor", prop_src)) {
-        result->color = 0xff000000; /* note: is never used */
-        result->current_color = TRUE;
+        result->paint.type = CURRENT_COLOR;
         return TRUE;
     }
 
-    argb = _rsvg_parse_raw_color (str, &end);
+    color = _rsvg_parse_raw_color (str, &end);
     if (str == end || *end != '\0')
         return FALSE;
 
     /* TODO: parse icccolor */
 
-    result->color = argb;
-    result->current_color = FALSE;
+    result->color = color;
     return TRUE;
 }
 
@@ -819,16 +816,16 @@ _rsvg_parse_node_ref (const char *str, RsvgNode **result, const RsvgPropSrc prop
 /* Parsers for presentation attributes */
 
 static gboolean
-rsvg_parse_current_color (const char *str, guint32 *result, const RsvgPropSrc prop_src)
+rsvg_parse_current_color (const char *str, RsvgColor *result, const RsvgPropSrc prop_src)
 {
-    guint32 argb;
+    RsvgColor color;
     const char *end;
 
-    argb = _rsvg_parse_raw_color (str, &end);
+    color = _rsvg_parse_raw_color (str, &end);
     if (str == end || *end != '\0')
         return FALSE;
 
-    *result = argb;
+    *result = color;
     return TRUE;
 }
 
@@ -854,10 +851,10 @@ rsvg_parse_direction (const char *str, PangoDirection *result, const RsvgPropSrc
 }
 
 static gboolean
-rsvg_parse_paint (const char *str, RsvgPaintServer *result,
+rsvg_parse_paint (const char *str, RsvgPaint *result,
                   const RsvgPropSrc prop_src, const RsvgDefs *defs)
 {
-    RsvgPaintServer ps, ps_ref;
+    RsvgPaint paint, paint_server;
     RsvgNode *ref;
     const char *end;
     gboolean expect_color = TRUE;
@@ -869,14 +866,14 @@ rsvg_parse_paint (const char *str, RsvgPaintServer *result,
         if (ref == NULL) {
             has_ref = FALSE;
         } else if (RSVG_NODE_TYPE (ref) == RSVG_NODE_TYPE_LINEAR_GRADIENT) {
-            ps_ref.type = RSVG_PAINT_SERVER_LIN_GRAD;
-            ps_ref.core.lingrad = (RsvgLinearGradient *) ref;
+            paint_server.paint.type = LINEAR_GRADIENT;
+            paint_server.paint.server = ref;
         } else if (RSVG_NODE_TYPE (ref) == RSVG_NODE_TYPE_RADIAL_GRADIENT) {
-            ps_ref.type = RSVG_PAINT_SERVER_RAD_GRAD;
-            ps_ref.core.radgrad = (RsvgRadialGradient *) ref;
+            paint_server.paint.type = RADIAL_GRADIENT;
+            paint_server.paint.server = ref;
         } else if (RSVG_NODE_TYPE (ref) == RSVG_NODE_TYPE_PATTERN) {
-            ps_ref.type = RSVG_PAINT_SERVER_PATTERN;
-            ps_ref.core.pattern = (RsvgPattern *) ref;
+            paint_server.paint.type = PATTERN;
+            paint_server.paint.server = ref;
         } else {
             has_ref = FALSE;
         }
@@ -893,20 +890,18 @@ rsvg_parse_paint (const char *str, RsvgPaintServer *result,
 
     if (expect_color) {
         if (rsvg_keyword_cmp (str, "none", prop_src)) {
-            ps.type = RSVG_PAINT_SERVER_NONE;
+            paint.paint.type = NONE;
         } else if (rsvg_keyword_cmp (str, "currentColor", prop_src)) {
-            ps.type = RSVG_PAINT_SERVER_CURRENT_COLOR;
-        } else if (rsvg_parse_current_color (str, &ps.core.color, CSS_VALUE)) {
-            ps.type = RSVG_PAINT_SERVER_SOLID;
-        } else {
+            paint.paint.type = CURRENT_COLOR;
+        } else if (!rsvg_parse_current_color (str, &paint.color, CSS_VALUE)) {
             return FALSE;
         }
     }
 
     if (has_ref)
-        *result = ps_ref;
+        *result = paint_server;
     else if (expect_color)
-        *result = ps;
+        *result = paint;
     else
         return FALSE;
     return TRUE;

@@ -74,16 +74,15 @@ rsvg_state_init (RsvgState *state)
     /* presentation attributes */
     state->clip_path         = NULL;
     state->clip_rule         = CAIRO_FILL_RULE_WINDING;
-    state->color             = 0xff000000; /* black */
+    state->color             = (RsvgColor) {0, 0, 0, 1.0}; /* black */
     state->direction         = PANGO_DIRECTION_LTR;
     state->enable_background = RSVG_ENABLE_BACKGROUND_ACCUMULATE;
-    state->fill              = (RsvgPaintServer) {.type = RSVG_PAINT_SERVER_SOLID,
-                                                  .core.color = 0xff000000};
-    state->fill_opacity      = 0xff;
+    state->fill              .color = (RsvgColor) {0, 0, 0, 1.0}; /* solid black */
+    state->fill_opacity      = 1.0;
     state->fill_rule         = CAIRO_FILL_RULE_WINDING;
     state->filter            = NULL;
-    state->flood_color       = (RsvgColor) {0xff000000, FALSE}; /* black */
-    state->flood_opacity     = 0xff;
+    state->flood_color       .color = (RsvgColor) {0, 0, 0, 1.0}; /* black */
+    state->flood_opacity     = 1.0;
     state->font_family       = g_strdup (RSVG_DEFAULT_FONT);
     state->font_size         = (RsvgLength) {RSVG_DEFAULT_FONT_SIZE, RSVG_UNIT_PX};
     state->font_stretch      = PANGO_STRETCH_NORMAL;
@@ -91,23 +90,23 @@ rsvg_state_init (RsvgState *state)
     state->font_variant      = PANGO_VARIANT_NORMAL;
     state->font_weight       = PANGO_WEIGHT_NORMAL;
     state->letter_spacing    = (RsvgLength) {0.0, RSVG_UNIT_PX};
-    state->lighting_color    = (RsvgColor) {0xffffffff, FALSE}; /* white */
+    state->lighting_color    .color = (RsvgColor) {255, 255, 255, 1.0}; /* white */
     state->marker_start      = NULL;
     state->marker_mid        = NULL;
     state->marker_end        = NULL;
     state->mask              = NULL;
-    state->opacity           = 0xff;
+    state->opacity           = 1.0;
     state->overflow          = FALSE;
     state->shape_rendering   = SHAPE_RENDERING_AUTO;
-    state->stop_color        = (RsvgColor) {0xff000000, FALSE}; /* black */
-    state->stop_opacity      = 0xff;
-    state->stroke            = (RsvgPaintServer) {.type = RSVG_PAINT_SERVER_NONE};
+    state->stop_color        .color = (RsvgColor) {0, 0, 0, 1.0}; /* black */
+    state->stop_opacity      = 1.0;
+    state->stroke            .paint.type = NONE;
     state->stroke_dasharray  = (RsvgLengthList) {0, NULL};
     state->stroke_dashoffset = (RsvgLength) {0.0, RSVG_UNIT_NUMBER};
     state->stroke_linecap    = CAIRO_LINE_CAP_BUTT;
     state->stroke_linejoin   = CAIRO_LINE_JOIN_MITER;
     state->stroke_miterlimit = 4.0;
-    state->stroke_opacity    = 0xff;
+    state->stroke_opacity    = 1.0;
     state->stroke_width      = (RsvgLength) {1.0, RSVG_UNIT_NUMBER};
     state->text_anchor       = TEXT_ANCHOR_START;
     state->text_decoration   = TEXT_DECORATION_NONE;

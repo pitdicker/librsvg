@@ -2865,10 +2865,10 @@ rsvg_filter_primitive_flood_render (RsvgFilterPrimitive * self, RsvgFilterContex
     char pixcolor[4];
     RsvgFilterPrimitiveOutput out;
 
-    guint32 color;
-    guint8 opacity;
+    RsvgColor color;
+    float opacity;
 
-    if (self->super.state->flood_color.current_color)
+    if (self->super.state->flood_color.paint.type == CURRENT_COLOR)
         color = self->super.state->color;
     else
         color = self->super.state->flood_color.color;
@@ -2886,10 +2886,10 @@ rsvg_filter_primitive_flood_render (RsvgFilterPrimitive * self, RsvgFilterContex
 
     output_pixels = cairo_image_surface_get_data (output);
 
-    for (i = 0; i < 3; i++)
-        pixcolor[i] = (int) (((unsigned char *)
-                               (&color))[2 - i]) * opacity / 255;
-    pixcolor[3] = opacity;
+    pixcolor[0] = floor (CLAMP (color.r, 0., 255.) + 0.5);
+    pixcolor[1] = floor (CLAMP (color.g, 0., 255.) + 0.5);
+    pixcolor[2] = floor (CLAMP (color.b, 0., 255.) + 0.5);
+    pixcolor[3] = floor (CLAMP ((color.a * opacity), 0., 1.) * 255.0 + 0.5);
 
     for (y = boundarys.y0; y < boundarys.y1; y++)
         for (x = boundarys.x0; x < boundarys.x1; x++)
@@ -4232,7 +4232,7 @@ rsvg_filter_primitive_diffuse_lighting_render (RsvgFilterPrimitive * self, RsvgF
     cairo_matrix_t iaffine;
     RsvgNodeLightSource *source = NULL;
     RsvgIRect boundarys;
-    guint32 lighting_color;
+    RsvgColor temp_color;
 
     guchar *in_pixels;
     guchar *output_pixels;
@@ -4282,14 +4282,14 @@ rsvg_filter_primitive_diffuse_lighting_render (RsvgFilterPrimitive * self, RsvgF
 
     output_pixels = cairo_image_surface_get_data (output);
 
-    if (self->super.state->lighting_color.current_color)
-        lighting_color = self->super.state->color;
+    if (self->super.state->lighting_color.paint.type == CURRENT_COLOR)
+        temp_color = self->super.state->color;
     else
-        lighting_color = self->super.state->lighting_color.color;
+        temp_color = self->super.state->lighting_color.color;
 
-    color.x = ((lighting_color >> 16) & 0xff) / 255.0; /* red */
-    color.y = ((lighting_color >>  8) & 0xff) / 255.0; /* green */
-    color.z = ((lighting_color >>  0) & 0xff) / 255.0; /* blue */
+    color.x = CLAMP (temp_color.r / 255., 0., 1.);
+    color.y = CLAMP (temp_color.g / 255., 0., 1.);
+    color.z = CLAMP (temp_color.b / 255., 0., 1.);
 
     surfaceScale = upself->surfaceScale / 255.0;
 
@@ -4427,7 +4427,7 @@ rsvg_filter_primitive_specular_lighting_render (RsvgFilterPrimitive * self, Rsvg
     cairo_matrix_t iaffine;
     RsvgIRect boundarys;
     RsvgNodeLightSource *source = NULL;
-    guint32 lighting_color;
+    RsvgColor temp_color;
 
     guchar *in_pixels;
     guchar *output_pixels;
@@ -4476,14 +4476,14 @@ rsvg_filter_primitive_specular_lighting_render (RsvgFilterPrimitive * self, Rsvg
 
     output_pixels = cairo_image_surface_get_data (output);
 
-    if (self->super.state->lighting_color.current_color)
-        lighting_color = self->super.state->color;
+    if (self->super.state->lighting_color.paint.type == CURRENT_COLOR)
+        temp_color = self->super.state->color;
     else
-        lighting_color = self->super.state->lighting_color.color;
+        temp_color = self->super.state->lighting_color.color;
 
-    color.x = ((lighting_color >> 16) & 0xff) / 255.0; /* red */
-    color.y = ((lighting_color >>  8) & 0xff) / 255.0; /* green */
-    color.z = ((lighting_color >>  0) & 0xff) / 255.0; /* blue */
+    color.x = CLAMP (temp_color.r / 255., 0., 1.);
+    color.y = CLAMP (temp_color.g / 255., 0., 1.);
+    color.z = CLAMP (temp_color.b / 255., 0., 1.);
 
     surfaceScale = upself->surfaceScale / 255.0;
 

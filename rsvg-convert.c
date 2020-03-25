@@ -133,7 +133,7 @@ main (int argc, char **argv)
     char *format = NULL;
     char *output = NULL;
     int keep_aspect_ratio = FALSE;
-    guint32 background_color = 0;
+    RsvgColor background_color = {0, 0, 0, 1.0}; /* black */
     char *background_color_str = NULL;
     char *base_uri = NULL;
     gboolean using_stdin = FALSE;
@@ -329,13 +329,12 @@ main (int argc, char **argv)
             const char *end;
             background_color = _rsvg_parse_raw_color (background_color_str, &end);
             if (end == background_color_str || *end != '\0')
-                background_color = 0;
+                background_color = (RsvgColor) {0, 0, 0, 1.0}; /* black */
 
-            cairo_set_source_rgb (
-                cr, 
-                ((background_color >> 16) & 0xff) / 255.0, 
-                ((background_color >> 8) & 0xff) / 255.0, 
-                ((background_color >> 0) & 0xff) / 255.0);
+            cairo_set_source_rgb (cr, 
+                                  CLAMP (background_color.r / 255., 0., 1.), 
+                                  CLAMP (background_color.g / 255., 0., 1.), 
+                                  CLAMP (background_color.b / 255., 0., 1.));
             cairo_rectangle (cr, 0, 0, dimensions.width, dimensions.height);
             cairo_fill (cr);
         }

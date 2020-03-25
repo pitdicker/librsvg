@@ -243,6 +243,11 @@ _rsvg_render_check_type (RsvgRender *render,
 #define _RSVG_RENDER_CIC(render, render_type, RenderCType) \
   ((RenderCType*) _rsvg_render_check_type ((render), (render_type)))
 
+typedef struct {
+    float r, g, b; /* normally between 0.0 and 255.0 */
+    float a;       /* normally between 0.0 and 1.0 */
+} RsvgColor;
+
 typedef enum {
     RSVG_UNIT_UNKNOWN,
     RSVG_UNIT_NUMBER,

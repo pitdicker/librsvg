@@ -101,23 +101,6 @@ struct _RsvgPattern {
     RsvgPattern *fallback;
 };
 
-struct _RsvgPaintServer {
-    enum _RsvgPaintServerType {
-        RSVG_PAINT_SERVER_NONE,
-        RSVG_PAINT_SERVER_SOLID,
-        RSVG_PAINT_SERVER_CURRENT_COLOR,
-        RSVG_PAINT_SERVER_RAD_GRAD,
-        RSVG_PAINT_SERVER_LIN_GRAD,
-        RSVG_PAINT_SERVER_PATTERN
-    } type;
-    union _RsvgPaintServerCore {
-        guint32             color;
-        RsvgLinearGradient *lingrad;
-        RsvgRadialGradient *radgrad;
-        RsvgPattern        *pattern;
-    } core;
-};
-
 G_GNUC_INTERNAL
 RsvgRadialGradient  *rsvg_clone_radial_gradient (const RsvgRadialGradient * grad,
                                                  gboolean * shallow_cloned);

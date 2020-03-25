@@ -43,7 +43,6 @@ rsvg_stop_set_atts (RsvgNode * self, RsvgHandle * ctx, RsvgPropertyBag * atts)
     const char *klazz = NULL, *id = NULL;
     const char *value, *end;
     RsvgGradientStop *stop;
-    RsvgState state;
 
     stop = (RsvgGradientStop *) self;
 
