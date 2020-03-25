@@ -87,16 +87,13 @@ rsvg_css_parse_vbox (const char *vbox)
 }
 
 double
-_rsvg_css_normalize_font_size (RsvgState * state, RsvgDrawingCtx * ctx)
+_rsvg_css_normalize_font_size (const RsvgState * state, const RsvgDrawingCtx * ctx)
 {
     RsvgState *parent;
     double parent_font_size;
     double font_size = state->font_size.length;
 
     switch (state->font_size.unit) {
-    case RSVG_UNIT_UNKNOWN:
-        g_assert (state->font_size.unit != RSVG_UNIT_UNKNOWN);
-        return 0.0;
     case RSVG_UNIT_PERCENTAGE:
         font_size *= 0.01;
         break;
@@ -106,7 +103,7 @@ _rsvg_css_normalize_font_size (RsvgState * state, RsvgDrawingCtx * ctx)
         font_size *= 0.5; /* TODO: should use real x-height of font */
         break;
     default:
-        return _rsvg_css_normalize_length (&state->font_size, ctx, 'v');
+        return rsvg_normalize_length (&state->font_size, ctx, NO_DIR);
     }
 
     if ((parent = rsvg_state_parent (state)))
@@ -118,26 +115,22 @@ _rsvg_css_normalize_font_size (RsvgState * state, RsvgDrawingCtx * ctx)
 }
 
 double
-_rsvg_css_normalize_length (const RsvgLength * in, RsvgDrawingCtx * ctx, char dir)
+rsvg_normalize_length (const RsvgLength * in, const RsvgDrawingCtx * ctx,
+                       const RsvgLengthDir dir)
 {
-    double length;
-    int *test;
-
     switch (in->unit) {
-    case RSVG_UNIT_UNKNOWN:
-        g_assert (in->unit != RSVG_UNIT_UNKNOWN);
-        return 0.0;
     case RSVG_UNIT_NUMBER:
         return in->length;
     case RSVG_UNIT_PERCENTAGE:
-        if (dir == 'h')
+        switch (dir) {
+        case HORIZONTAL:
             return in->length * 0.01 * ctx->vb.rect.width;
-        if (dir == 'v')
+        case VERTICAL:
             return in->length * 0.01 * ctx->vb.rect.height;
-        if (dir == 'o')
-            return in->length * 0.01 * rsvg_viewport_percentage (ctx->vb.rect.width,
-                                                                 ctx->vb.rect.height);
-        break;
+        case NO_DIR:
+            return in->length * 0.01 * sqrt ((ctx->vb.rect.width * ctx->vb.rect.width +
+                                              ctx->vb.rect.height * ctx->vb.rect.height) / 2.0);
+        }
     case RSVG_UNIT_EMS:
         return in->length * _rsvg_css_normalize_font_size (rsvg_current_state (ctx), ctx);
     case RSVG_UNIT_EXS:
@@ -146,28 +139,20 @@ _rsvg_css_normalize_length (const RsvgLength * in, RsvgDrawingCtx * ctx, char di
     case RSVG_UNIT_PX:
         return in->length;
     case RSVG_UNIT_CM:
-        length = in->length / 2.54;
-        break;
+        return in->length / 2.54 * ctx->dpi;
     case RSVG_UNIT_MM:
-        length = in->length / 25.4;
-        break;
+        return in->length / 25.4 * ctx->dpi;
     case RSVG_UNIT_IN:
-        length = in->length;
-        break;
+        return in->length * ctx->dpi;
     case RSVG_UNIT_PT:
-        length = in->length / 72.0;
-        break;
+        return in->length / 72.0 * ctx->dpi;
     case RSVG_UNIT_PC:
-        length = in->length / 6.0;
-        break;
+        return in->length / 6.0 * ctx->dpi;
+    case RSVG_UNIT_UNKNOWN:
+    default:
+        g_assert_not_reached();
+        return 0.0;
     }
-
-    if (dir == 'h')
-        return length * ctx->dpi_x;
-    if (dir == 'v')
-        return length * ctx->dpi_y;
-    if (dir == 'o')
-        return length * rsvg_viewport_percentage (ctx->dpi_x, ctx->dpi_y);
 }
 
 double
@@ -175,9 +160,6 @@ _rsvg_css_hand_normalize_length (const RsvgLength * in, gdouble pixels_per_inch,
                                  gdouble width_or_height, gdouble font_size)
 {
     switch (in->unit) {
-    case RSVG_UNIT_UNKNOWN:
-        g_assert (in->unit != RSVG_UNIT_UNKNOWN);
-        return 0.0;
     case RSVG_UNIT_NUMBER:
         return in->length;
     case RSVG_UNIT_PERCENTAGE:
@@ -198,6 +180,10 @@ _rsvg_css_hand_normalize_length (const RsvgLength * in, gdouble pixels_per_inch,
         return in->length / 72.0 * pixels_per_inch;
     case RSVG_UNIT_PC:
         return in->length / 6.0 * pixels_per_inch;
+    case RSVG_UNIT_UNKNOWN:
+    default:
+        g_assert_not_reached();
+        return 0.0;
     }
 }
 
@@ -218,7 +204,7 @@ rsvg_normalize_stroke_dasharray (const RsvgLengthList src,
     result = g_new (double, n_dashes);
 
     for (i = 0; i < src.number_of_items; i++)
-        result[i] = _rsvg_css_normalize_length (&src.items[i], ctx, 'o');
+        result[i] = rsvg_normalize_length (&src.items[i], ctx, NO_DIR);
 
     /* an odd number of dashes gets repeated */
     if (!is_even) {

@@ -148,8 +148,8 @@ rsvg_cairo_new_drawing_ctx (cairo_t * cr, RsvgHandle * handle)
 
     draw->defs = handle->priv->defs;
     draw->base_uri = g_strdup (handle->priv->base_uri);
-    draw->dpi_x = handle->priv->dpi_x;
-    draw->dpi_y = handle->priv->dpi_y;
+    draw->dpi = handle->priv->dpi_x;
+    draw->dpi_xy_ratio = handle->priv->dpi_y / handle->priv->dpi_x;
     draw->vb.rect.width = data.em;
     draw->vb.rect.height = data.ex;
     draw->pango_context = NULL;

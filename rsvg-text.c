@@ -270,10 +270,10 @@ _rsvg_node_text_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     RsvgNodeText *text = (RsvgNodeText *) self;
     rsvg_state_reinherit_top (ctx, self->state, dominate);
 
-    x = _rsvg_css_normalize_length (&text->x, ctx, 'h');
-    y = _rsvg_css_normalize_length (&text->y, ctx, 'v');
-    dx = _rsvg_css_normalize_length (&text->dx, ctx, 'h');
-    dy = _rsvg_css_normalize_length (&text->dy, ctx, 'v');
+    x = rsvg_normalize_length (&text->x, ctx, HORIZONTAL);
+    y = rsvg_normalize_length (&text->y, ctx, VERTICAL);
+    dx = rsvg_normalize_length (&text->dx, ctx, HORIZONTAL);
+    dy = rsvg_normalize_length (&text->dy, ctx, VERTICAL);
 
     if (rsvg_current_state (ctx)->text_anchor != TEXT_ANCHOR_START) {
         _rsvg_node_text_length_children (self, ctx, &length, &lastwasspace, FALSE);
@@ -320,8 +320,8 @@ _rsvg_node_text_type_tspan (RsvgNodeText * self, RsvgDrawingCtx * ctx,
     double dx, dy, length = 0;
     rsvg_state_reinherit_top (ctx, self->super.state, 0);
 
-    dx = _rsvg_css_normalize_length (&self->dx, ctx, 'h');
-    dy = _rsvg_css_normalize_length (&self->dy, ctx, 'v');
+    dx = rsvg_normalize_length (&self->dx, ctx, HORIZONTAL);
+    dy = rsvg_normalize_length (&self->dy, ctx, VERTICAL);
 
     if (rsvg_current_state (ctx)->text_anchor != TEXT_ANCHOR_START) {
         gboolean lws = *lastwasspace;
@@ -332,7 +332,7 @@ _rsvg_node_text_type_tspan (RsvgNodeText * self, RsvgDrawingCtx * ctx,
     }
 
     if (self->x.unit != RSVG_UNIT_UNKNOWN) {
-        *x = _rsvg_css_normalize_length (&self->x, ctx, 'h');
+        *x = rsvg_normalize_length (&self->x, ctx, HORIZONTAL);
         if (!PANGO_GRAVITY_IS_VERTICAL (rsvg_current_state (ctx)->text_gravity)) {
             *x -= length;
             if (rsvg_current_state (ctx)->text_anchor == TEXT_ANCHOR_MIDDLE)
@@ -344,7 +344,7 @@ _rsvg_node_text_type_tspan (RsvgNodeText * self, RsvgDrawingCtx * ctx,
     *x += dx;
 
     if (self->y.unit != RSVG_UNIT_UNKNOWN) {
-        *y = _rsvg_css_normalize_length (&self->y, ctx, 'v');
+        *y = rsvg_normalize_length (&self->y, ctx, VERTICAL);
         if (PANGO_GRAVITY_IS_VERTICAL (rsvg_current_state (ctx)->text_gravity)) {
             *y -= length;
             if (rsvg_current_state (ctx)->text_anchor == TEXT_ANCHOR_MIDDLE)
@@ -367,9 +367,9 @@ _rsvg_node_text_length_tspan (RsvgNodeText * self,
         return TRUE;
 
     if (PANGO_GRAVITY_IS_VERTICAL (rsvg_current_state (ctx)->text_gravity))
-        *length += _rsvg_css_normalize_length (&self->dy, ctx, 'v');
+        *length += rsvg_normalize_length (&self->dy, ctx, VERTICAL);
     else
-        *length += _rsvg_css_normalize_length (&self->dx, ctx, 'h');
+        *length += rsvg_normalize_length (&self->dx, ctx, HORIZONTAL);
 
     return _rsvg_node_text_length_children (&self->super, ctx, length,
                                              lastwasspace, usetextonly);
@@ -502,17 +502,16 @@ rsvg_text_create_layout (RsvgDrawingCtx * ctx,
     pango_font_description_set_variant (font_desc, state->font_variant);
     pango_font_description_set_weight (font_desc, state->font_weight);
     pango_font_description_set_stretch (font_desc, state->font_stretch);
-    pango_font_description_set_size (font_desc,
-                                     _rsvg_css_normalize_font_size (state, ctx) *
-                                     PANGO_SCALE / ctx->dpi_y * 72);
+    pango_font_description_set_absolute_size (font_desc,
+                                              _rsvg_css_normalize_font_size (state, ctx) * PANGO_SCALE);
 
     layout = pango_layout_new (context);
     pango_layout_set_font_description (layout, font_desc);
     pango_font_description_free (font_desc);
 
     attr_list = pango_attr_list_new ();
-    attribute = pango_attr_letter_spacing_new (_rsvg_css_normalize_length (&state->letter_spacing,
-                                                                           ctx, 'h') * PANGO_SCALE);
+    attribute = pango_attr_letter_spacing_new (PANGO_SCALE *
+                    rsvg_normalize_length (&state->letter_spacing, ctx, HORIZONTAL));
     attribute->start_index = 0;
     attribute->end_index = G_MAXINT;
     pango_attr_list_insert (attr_list, attribute); 

@@ -238,6 +238,60 @@ _rsvg_parse_prop_length (const char *str, RsvgLength *result, const RsvgPropSrc 
 }
 
 gboolean
+_rsvg_parse_number_list (const char *str, RsvgNumberList *result, const RsvgPropSrc prop_src)
+{
+    RsvgNumberList list;
+    const char *tmp;
+    guint i;
+
+    g_assert (str != NULL);
+
+    if (*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n' || *str == ',' || *str == '\0') {
+        /* str starts with comma-wsp */
+        return FALSE;
+    }
+
+    /* count number of items */
+    list.number_of_items = 0;
+    tmp = str;
+    while (*tmp != '\0') {
+        while (*tmp != ' ' && *tmp != '\t' && *tmp != '\r' && *tmp != '\n' && *tmp != ',' && *tmp != '\0')
+            tmp++;
+
+        list.number_of_items++;
+        _rsvg_skip_comma_wsp (tmp, &tmp);
+    }
+
+    list.items = g_new (RsvgNumberList, list.number_of_items);
+
+    /* parse the numbers */
+    for (i = 0; i < list.number_of_items; i++) {
+        list.items[i] = _rsvg_parse_number (str, &tmp, prop_src);
+        if (str == tmp)
+            goto invalid_list;
+        str = tmp;
+
+        /* if this is not the last item skip comma-whitespace */
+        if (i + 1 != list.number_of_items) {
+            _rsvg_skip_comma_wsp (str, &tmp);
+            if (str == tmp)
+                goto invalid_list;
+            str = tmp;
+        }
+    }
+
+    if (*str != '\0')
+        goto invalid_list;
+
+    *result = list;
+    return TRUE;
+
+invalid_list:
+    g_free (list.items);
+    return FALSE;
+}
+
+gboolean
 _rsvg_parse_length_list (const char *str, RsvgLengthList *result, const RsvgPropSrc prop_src)
 {
     RsvgLengthList list;

@@ -91,12 +91,12 @@ _rsvg_node_rect_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     GArray *pathdata;
     RSVGPathSegm * path;
 
-    x = _rsvg_css_normalize_length (&rect->x, ctx, 'h');
-    y = _rsvg_css_normalize_length (&rect->y, ctx, 'v');
-    w = _rsvg_css_normalize_length (&rect->w, ctx, 'h');
-    h = _rsvg_css_normalize_length (&rect->h, ctx, 'v');
-    rx = _rsvg_css_normalize_length (&rect->rx, ctx, 'h');
-    ry = _rsvg_css_normalize_length (&rect->ry, ctx, 'v');
+    x = rsvg_normalize_length (&rect->x, ctx, HORIZONTAL);
+    y = rsvg_normalize_length (&rect->y, ctx, VERTICAL);
+    w = rsvg_normalize_length (&rect->w, ctx, HORIZONTAL);
+    h = rsvg_normalize_length (&rect->h, ctx, VERTICAL);
+    rx = rsvg_normalize_length (&rect->rx, ctx, HORIZONTAL);
+    ry = rsvg_normalize_length (&rect->ry, ctx, VERTICAL);
 
     if (w == 0. || h == 0.)
         return;
@@ -218,9 +218,9 @@ _rsvg_node_circle_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     RSVGPathSegm * path;
     double cx, cy, r;
 
-    cx = _rsvg_css_normalize_length (&circle->cx, ctx, 'h');
-    cy = _rsvg_css_normalize_length (&circle->cy, ctx, 'v');
-    r = _rsvg_css_normalize_length (&circle->r, ctx, 'o');
+    cx = rsvg_normalize_length (&circle->cx, ctx, HORIZONTAL);
+    cy = rsvg_normalize_length (&circle->cy, ctx, VERTICAL);
+    r = rsvg_normalize_length (&circle->r, ctx, NO_DIR);
 
     if (r == 0)
         return;
@@ -296,10 +296,10 @@ _rsvg_node_ellipse_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     RSVGPathSegm * path;
     double cx, cy, rx, ry;
 
-    cx = _rsvg_css_normalize_length (&ellipse->cx, ctx, 'h');
-    cy = _rsvg_css_normalize_length (&ellipse->cy, ctx, 'v');
-    rx = _rsvg_css_normalize_length (&ellipse->rx, ctx, 'h');
-    ry = _rsvg_css_normalize_length (&ellipse->ry, ctx, 'v');
+    cx = rsvg_normalize_length (&ellipse->cx, ctx, HORIZONTAL);
+    cy = rsvg_normalize_length (&ellipse->cy, ctx, VERTICAL);
+    rx = rsvg_normalize_length (&ellipse->rx, ctx, HORIZONTAL);
+    ry = rsvg_normalize_length (&ellipse->ry, ctx, VERTICAL);
 
     if (rx == 0 || ry == 0)
         return;
@@ -375,10 +375,10 @@ _rsvg_node_line_draw (RsvgNode * overself, RsvgDrawingCtx * ctx, int dominate)
     GArray *pathdata;
     RSVGPathSegm * path;
 
-    x1 = _rsvg_css_normalize_length (&self->x1, ctx, 'h');
-    y1 = _rsvg_css_normalize_length (&self->y1, ctx, 'v');
-    x2 = _rsvg_css_normalize_length (&self->x2, ctx, 'h');
-    y2 = _rsvg_css_normalize_length (&self->y2, ctx, 'v');
+    x1 = rsvg_normalize_length (&self->x1, ctx, HORIZONTAL);
+    y1 = rsvg_normalize_length (&self->y1, ctx, VERTICAL);
+    x2 = rsvg_normalize_length (&self->x2, ctx, HORIZONTAL);
+    y2 = rsvg_normalize_length (&self->y2, ctx, VERTICAL);
 
     rsvg_path_builder_init (&pathdata, 2);
     rsvg_path_builder_move_to (&pathdata, x1, y1, PATHSEG_MOVETO_ABS);

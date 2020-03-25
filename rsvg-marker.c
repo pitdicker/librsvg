@@ -125,8 +125,8 @@ rsvg_marker_render (RsvgMarker * self, gdouble x, gdouble y, gdouble orient, gdo
 
     if (self->vbox.active) {
         double w, h;
-        w = _rsvg_css_normalize_length (&self->width, ctx, 'h');
-        h = _rsvg_css_normalize_length (&self->height, ctx, 'v');
+        w = rsvg_normalize_length (&self->width, ctx, HORIZONTAL);
+        h = rsvg_normalize_length (&self->height, ctx, VERTICAL);
 
         rsvg_preserve_aspect_ratio (self->preserve_aspect_ratio,
                                     self->vbox.rect.width,
@@ -142,8 +142,8 @@ rsvg_marker_render (RsvgMarker * self, gdouble x, gdouble y, gdouble orient, gdo
     }
 
     cairo_matrix_init_translate (&taffine,
-                                 -_rsvg_css_normalize_length (&self->refX, ctx, 'h'),
-                                 -_rsvg_css_normalize_length (&self->refY, ctx, 'v'));
+                                 -rsvg_normalize_length (&self->refX, ctx, HORIZONTAL),
+                                 -rsvg_normalize_length (&self->refY, ctx, VERTICAL));
     cairo_matrix_multiply (&affine, &taffine, &affine);
 
     rsvg_state_push (ctx);
@@ -165,8 +165,8 @@ rsvg_marker_render (RsvgMarker * self, gdouble x, gdouble y, gdouble orient, gdo
                                     self->vbox.rect.width, self->vbox.rect.height);
         else
             rsvg_add_clipping_rect (ctx, 0, 0,
-                                    _rsvg_css_normalize_length (&self->width, ctx, 'h'),
-                                    _rsvg_css_normalize_length (&self->height, ctx, 'v'));
+                                    rsvg_normalize_length (&self->width, ctx, HORIZONTAL),
+                                    rsvg_normalize_length (&self->height, ctx, VERTICAL));
     }
 
     for (i = 0; i < self->super.children->len; i++) {
@@ -207,7 +207,7 @@ rsvg_render_markers (RsvgDrawingCtx * ctx, const RSVGPathSegm *path)
     guint i, number_of_items;
 
     state = rsvg_current_state (ctx);
-    linewidth = _rsvg_css_normalize_length (&state->stroke_width, ctx, 'o');
+    linewidth = rsvg_normalize_length (&state->stroke_width, ctx, NO_DIR);
 
     marker_start = (RsvgMarker *) state->marker_start;
     marker_mid = (RsvgMarker *) state->marker_mid;

@@ -61,12 +61,6 @@ style_value_data_free (StyleValueData *value)
     g_free (value);
 }
 
-gdouble
-rsvg_viewport_percentage (gdouble width, gdouble height)
-{
-    return sqrt (width * height);
-}
-
 void
 rsvg_state_init (RsvgState *state)
 {

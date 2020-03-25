@@ -196,7 +196,8 @@ struct RsvgDrawingCtx {
     RsvgDefs *defs;
     gchar *base_uri;
     PangoContext *pango_context;
-    double dpi_x, dpi_y;
+    double dpi;
+    double dpi_xy_ratio; /* (dpi_y / dpi_x) */
     RsvgViewBox vb;
     GSList *vb_stack;
     GSList *drawsub_stack;
@@ -257,6 +258,12 @@ typedef enum {
     RSVG_UNIT_PT,
     RSVG_UNIT_PC
 } RsvgLengthUnit;
+
+typedef enum {
+    HORIZONTAL,
+    VERTICAL,
+    NO_DIR
+} RsvgLengthDir;
 
 typedef struct {
     double length;
@@ -461,13 +468,15 @@ void rsvg_bbox_insert   (RsvgBbox * dst, RsvgBbox * src);
 G_GNUC_INTERNAL
 void rsvg_bbox_clip     (RsvgBbox * dst, RsvgBbox * src);
 G_GNUC_INTERNAL
-double _rsvg_css_normalize_length       (const RsvgLength * in, RsvgDrawingCtx * ctx, char dir);
+double _rsvg_css_normalize_font_size    (const RsvgState * state, const RsvgDrawingCtx * ctx);
+G_GNUC_INTERNAL
+double rsvg_normalize_length       (const RsvgLength * in, const RsvgDrawingCtx * ctx,
+                                    const RsvgLengthDir dir);
 G_GNUC_INTERNAL
 double _rsvg_css_hand_normalize_length  (const RsvgLength * in, gdouble pixels_per_inch,
                                          gdouble width_or_height, gdouble font_size);
 G_GNUC_INTERNAL
 guint rsvg_normalize_stroke_dasharray (const RsvgLengthList src, double **dst, const RsvgDrawingCtx *ctx);
-double _rsvg_css_normalize_font_size    (RsvgState * state, RsvgDrawingCtx * ctx);
 G_GNUC_INTERNAL
 void _rsvg_push_view_box    (RsvgDrawingCtx * ctx, double w, double h);
 G_GNUC_INTERNAL

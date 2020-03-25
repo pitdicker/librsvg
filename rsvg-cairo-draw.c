@@ -86,10 +86,10 @@ _set_source_rsvg_linear_gradient (RsvgDrawingCtx * ctx,
 
     if (linear->obj_bbox)
         _rsvg_push_view_box (ctx, 1., 1.);
-    pattern = cairo_pattern_create_linear (_rsvg_css_normalize_length (&linear->x1, ctx, 'h'),
-                                           _rsvg_css_normalize_length (&linear->y1, ctx, 'v'),
-                                           _rsvg_css_normalize_length (&linear->x2, ctx, 'h'),
-                                           _rsvg_css_normalize_length (&linear->y2, ctx, 'v'));
+    pattern = cairo_pattern_create_linear (rsvg_normalize_length (&linear->x1, ctx, HORIZONTAL),
+                                           rsvg_normalize_length (&linear->y1, ctx, VERTICAL),
+                                           rsvg_normalize_length (&linear->x2, ctx, HORIZONTAL),
+                                           rsvg_normalize_length (&linear->y2, ctx, VERTICAL));
 
     if (linear->obj_bbox)
         _rsvg_pop_view_box (ctx);
@@ -131,11 +131,12 @@ _set_source_rsvg_radial_gradient (RsvgDrawingCtx * ctx,
     if (radial->obj_bbox)
         _rsvg_push_view_box (ctx, 1., 1.);
 
-    pattern = cairo_pattern_create_radial (_rsvg_css_normalize_length (&radial->fx, ctx, 'h'),
-                                           _rsvg_css_normalize_length (&radial->fy, ctx, 'v'), 0.0,
-                                           _rsvg_css_normalize_length (&radial->cx, ctx, 'h'),
-                                           _rsvg_css_normalize_length (&radial->cy, ctx, 'v'),
-                                           _rsvg_css_normalize_length (&radial->r, ctx, 'o'));
+    pattern = cairo_pattern_create_radial (rsvg_normalize_length (&radial->fx, ctx, HORIZONTAL),
+                                           rsvg_normalize_length (&radial->fy, ctx, VERTICAL),
+                                           0.0,
+                                           rsvg_normalize_length (&radial->cx, ctx, HORIZONTAL),
+                                           rsvg_normalize_length (&radial->cy, ctx, VERTICAL),
+                                           rsvg_normalize_length (&radial->r, ctx, NO_DIR));
     if (radial->obj_bbox)
         _rsvg_pop_view_box (ctx);
 
@@ -199,10 +200,10 @@ _set_source_rsvg_pattern (RsvgDrawingCtx * ctx,
     if (rsvg_pattern->obj_bbox)
         _rsvg_push_view_box (ctx, 1., 1.);
 
-    patternx = _rsvg_css_normalize_length (&rsvg_pattern->x, ctx, 'h');
-    patterny = _rsvg_css_normalize_length (&rsvg_pattern->y, ctx, 'v');
-    patternw = _rsvg_css_normalize_length (&rsvg_pattern->width, ctx, 'h');
-    patternh = _rsvg_css_normalize_length (&rsvg_pattern->height, ctx, 'v');
+    patternx = rsvg_normalize_length (&rsvg_pattern->x, ctx, HORIZONTAL);
+    patterny = rsvg_normalize_length (&rsvg_pattern->y, ctx, VERTICAL);
+    patternw = rsvg_normalize_length (&rsvg_pattern->width, ctx, HORIZONTAL);
+    patternh = rsvg_normalize_length (&rsvg_pattern->height, ctx, VERTICAL);
 
     if (rsvg_pattern->obj_bbox)
         _rsvg_pop_view_box (ctx);
@@ -372,7 +373,7 @@ rsvg_cairo_create_pango_context (RsvgDrawingCtx * ctx)
     fontmap = pango_cairo_font_map_get_default ();
     context = pango_cairo_font_map_create_context (PANGO_CAIRO_FONT_MAP (fontmap));
     pango_cairo_update_context (render->cr, context);
-    pango_cairo_context_set_resolution (context, ctx->dpi_y);
+    pango_cairo_context_set_resolution (context, ctx->dpi);
     return context;
 }
 
@@ -439,7 +440,7 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
             cairo_rotate (render->cr, -rotation);
         pango_cairo_layout_path (render->cr, layout);
 
-        cairo_set_line_width (render->cr, _rsvg_css_normalize_length (&state->stroke_width, ctx, 'h'));
+        cairo_set_line_width (render->cr, rsvg_normalize_length (&state->stroke_width, ctx, NO_DIR));
         cairo_set_miter_limit (render->cr, state->stroke_miterlimit);
         cairo_set_line_cap (render->cr, state->stroke_linecap);
         cairo_set_line_join (render->cr, state->stroke_linejoin);
@@ -447,7 +448,7 @@ rsvg_cairo_render_pango_layout (RsvgDrawingCtx * ctx, PangoLayout * layout, doub
             n_dashes = rsvg_normalize_stroke_dasharray (state->stroke_dasharray,
                                                         &dasharray, ctx);
             cairo_set_dash (render->cr, dasharray, n_dashes,
-                            _rsvg_css_normalize_length (&state->stroke_dashoffset, ctx, 'o'));
+                            rsvg_normalize_length (&state->stroke_dashoffset, ctx, NO_DIR));
             g_free (dasharray);
         } else {
             cairo_set_dash (render->cr, NULL, 0, 0.0);
@@ -486,7 +487,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
 
     _set_rsvg_affine (render, &state->affine);
 
-    cairo_set_line_width (cr, _rsvg_css_normalize_length (&state->stroke_width, ctx, 'h'));
+    cairo_set_line_width (cr, rsvg_normalize_length (&state->stroke_width, ctx, NO_DIR));
     cairo_set_miter_limit (cr, state->stroke_miterlimit);
     cairo_set_line_cap (cr, state->stroke_linecap);
     cairo_set_line_join (cr, state->stroke_linejoin);
@@ -494,7 +495,7 @@ rsvg_cairo_render_path (RsvgDrawingCtx * ctx, const RSVGPathSegm *rsvg_path)
         n_dashes = rsvg_normalize_stroke_dasharray (state->stroke_dasharray,
                                                     &dasharray, ctx);
         cairo_set_dash (render->cr, dasharray, n_dashes,
-                        _rsvg_css_normalize_length (&state->stroke_dashoffset, ctx, 'o'));
+                        rsvg_normalize_length (&state->stroke_dashoffset, ctx, NO_DIR));
         g_free (dasharray);
     } else {
         cairo_set_dash (render->cr, NULL, 0, 0.0);
@@ -663,10 +664,10 @@ rsvg_cairo_generate_mask (cairo_t * cr, RsvgMask * self, RsvgDrawingCtx * ctx, R
     if (self->maskunits == objectBoundingBox)
         _rsvg_push_view_box (ctx, 1, 1);
 
-    sx = _rsvg_css_normalize_length (&self->x, ctx, 'h');
-    sy = _rsvg_css_normalize_length (&self->y, ctx, 'v');
-    sw = _rsvg_css_normalize_length (&self->width, ctx, 'h');
-    sh = _rsvg_css_normalize_length (&self->height, ctx, 'v');
+    sx = rsvg_normalize_length (&self->x, ctx, HORIZONTAL);
+    sy = rsvg_normalize_length (&self->y, ctx, VERTICAL);
+    sw = rsvg_normalize_length (&self->width, ctx, HORIZONTAL);
+    sh = rsvg_normalize_length (&self->height, ctx, VERTICAL);
 
     if (self->maskunits == objectBoundingBox)
         _rsvg_pop_view_box (ctx);

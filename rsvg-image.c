@@ -161,10 +161,10 @@ rsvg_node_image_draw (RsvgNode * self, RsvgDrawingCtx * ctx, int dominate)
     if (surface == NULL)
         return;
 
-    x = _rsvg_css_normalize_length (&z->x, ctx, 'h');
-    y = _rsvg_css_normalize_length (&z->y, ctx, 'v');
-    w = _rsvg_css_normalize_length (&z->w, ctx, 'h');
-    h = _rsvg_css_normalize_length (&z->h, ctx, 'v');
+    x = rsvg_normalize_length (&z->x, ctx, HORIZONTAL);
+    y = rsvg_normalize_length (&z->y, ctx, VERTICAL);
+    w = rsvg_normalize_length (&z->w, ctx, HORIZONTAL);
+    h = rsvg_normalize_length (&z->h, ctx, VERTICAL);
 
     rsvg_state_reinherit_top (ctx, z->super.state, dominate);
 
